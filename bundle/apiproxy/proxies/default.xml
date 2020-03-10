@@ -1,0 +1,62 @@
+<ProxyEndpoint name='default'>
+  <Description>Proxy for Java callout XOP Editor</Description>
+  <HTTPProxyConnection>
+    <BasePath>/xop-editor</BasePath>
+    <Properties/>
+    <VirtualHost>secure</VirtualHost>
+  </HTTPProxyConnection>
+
+  <FaultRules/>
+
+  <PreFlow name='PreFlow'>
+      <Request/>
+      <Response>
+        <Step><Name>AM-CleanResponseHeaders</Name></Step>
+      </Response>
+  </PreFlow>
+  <PostFlow name='PostFlow'>
+      <Request/>
+      <Response>
+      </Response>
+  </PostFlow>
+  <PostClientFlow name='PostFlow'>
+      <Request/>
+      <Response>
+      </Response>
+  </PostClientFlow>
+
+  <Flows>
+    <Flow name='test 1'>
+      <Description>parse a XOP document</Description>
+      <!--
+          Example invocation:
+
+       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-editor/t1
+
+      -->
+      <Request>
+        <Step>
+          <Name>Java-ProcessXop-1</Name>
+        </Step>
+      </Request>
+
+      <Response>
+        <Step>
+          <Name>AM-Response-1</Name>
+        </Step>
+      </Response>
+      <Condition>(proxy.pathsuffix MatchesPath "/t1") and (request.verb = "POST")</Condition>
+    </Flow>
+
+    <Flow name='unknown request'>
+      <Request>
+        <Step><Name>RF-UnknownRequest</Name></Step>
+      </Request>
+      <Response/>
+    </Flow>
+
+  </Flows>
+
+  <RouteRule name='Loopback'/>
+
+</ProxyEndpoint>

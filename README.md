@@ -62,7 +62,7 @@ The inbound message should bear a set of headers that includes a `content-type`
 which indicates "multipart/related":
 
 ```
-Content-Type: Multipart/Related; boundary=MIME_boundary; start='<rootpart@soapui.org>'
+Content-Type: multipart/related; boundary=MIME_boundary; start='<rootpart@soapui.org>'
 ```
 
 ...and the message payload should look like this:

@@ -130,7 +130,7 @@ public class XopEditor extends CalloutBase implements Execution {
       if (ctype2 == null) {
         throw new IllegalStateException("no content-type found (part2)");
       }
-      if (!ctype2.startsWith("application/zip")) {
+      if (!ctype2.startsWith("application/zip") && !ctype2.startsWith("application/octet-stream")) {
         throw new IllegalStateException("unexpected content-type (part2)");
       }
       PartOutput partOutput2 = mpo.newPart();

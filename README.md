@@ -17,11 +17,10 @@ This example is not an official Google product, nor is it part of an official Go
 ## Using this policy
 
 You do not need to build the source code in order to use the policy in
-Apigee Edge.  All you need is the built JAR, and the appropriate
+Apigee Edge. All you need is the built JAR, and the appropriate
 configuration for the policy.
 
-If you want to build it, the
-instructions are at the bottom of this readme.
+If you want to build it, the instructions are at the bottom of this readme.
 
 
 1. copy the callout jar file, available in
@@ -31,8 +30,7 @@ instructions are at the bottom of this readme.
    Edge Admin Portal.
 
 2. include an XML file for the Java callout policy in your
-   apiproxy/resources/policies directory. It should look
-   like this:
+   `apiproxy/resources/policies` directory. It should look something like this:
 
    ```xml
    <JavaCallout name='Java-ProcessXop-1'>
@@ -45,10 +43,9 @@ instructions are at the bottom of this readme.
    ```
 
 3. use the Edge UI, or a command-line tool like
-   [importAndDeploy.js](https://github.com/DinoChiesa/apigee-edge-js/blob/master/examples/importAndDeploy.js) or
+   [importAndDeploy.js](https://github.com/DinoChiesa/apigee-edge-js-examples/blob/master/importAndDeploy.js) or
    [apigeetool](https://github.com/apigee/apigeetool-node)
-   or similar to
-   import your proxy into an Edge organization, and then deploy the proxy .
+   or similar, to import your proxy into an Edge organization, and then deploy the proxy .
    Eg, `./importAndDeploy.js -n -v -o ${ORG} -e ${ENV} -d bundle/`
 
 4. Use a client to generate and send http requests to the proxy you just deployed . Eg,
@@ -59,11 +56,16 @@ instructions are at the bottom of this readme.
 
 ## Notes on Usage
 
-This repo includes a single callout class,
+This repo includes a single callout class, `com.google.apigee.edgecallouts.XopEditor`.
 
-* com.google.apigee.edgecallouts.XopEditor - edit a XOP payload
+The inbound message should bear a set of headers that includes a `content-type`
+which indicates "multipart/related":
 
-The inbound message should look like this:
+```
+Content-Type: Multipart/Related; boundary=MIME_boundary; start='<rootpart@soapui.org>'
+```
+
+...and the message payload should look like this:
 ```
 --MIME_boundary
 Content-Type: application/soap+xml; charset=UTF-8
@@ -114,10 +116,11 @@ Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>
 ...binary zip data...
 
 --MIME_boundary--
-
 ```
 
-The callout strips out the UsernameToken element and resets the message.content variable.
+The callout strips out the UsernameToken element and sets the modified SOAP
+message, along with the unmodified XOP attachment into the the message.content
+variable.
 
 
 ## Additional Notes
@@ -146,8 +149,8 @@ The callout strips out the UsernameToken element and resets the message.content 
 
 ## Example API Proxy
 
-You can find an example proxy bundle that uses the policy, [here in this repo](bundle/apiproxy).
-The example proxy accepts a post.
+You can find an example proxy bundle that uses the policy, [here in this
+repo](bundle/apiproxy). The example proxy accepts a post.
 
 You must deploy the proxy in order to invoke it.
 
@@ -171,25 +174,26 @@ Building from source requires Java 1.8, and Maven.
 2. Before building _the first time_, configure the build on your machine by
    loading the Apigee jars into your local cache:
 
-  ```
-  ./buildsetup.sh
-  ```
+   ```
+   ./buildsetup.sh
+   ```
 
 3. Build with maven.
-  ```
-  cd callout
-  mvn clean package
-  ```
+   ```
+   cd callout
+   mvn clean package
+   ```
 
-  This will build the dependency jar, and the callout jar, and then also run all
-  the tests. After successful tests, it will copy the jar to the resource
-  directory in the sample apiproxy bundle.
+   This will build the dependency jar, and the callout jar, and then also run all
+   the tests. After successful tests, it will copy the jar to the resource
+   directory in the sample apiproxy bundle.
 
 
 ## License
 
-This material is Copyright 2018-2020 Google LLC.
-and is licensed under the [Apache 2.0 License](LICENSE). This includes the Java code as well as the API Proxy configuration.
+This material is Copyright 2018-2020 Google LLC.  and is licensed under the
+[Apache 2.0 License](LICENSE). This includes the Java code as well as the API
+Proxy configuration.
 
 ## Bugs
 

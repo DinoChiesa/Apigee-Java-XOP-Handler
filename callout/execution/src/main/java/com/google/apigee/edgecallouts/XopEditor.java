@@ -28,7 +28,6 @@ import com.github.danieln.multipart.PartInput;
 import com.github.danieln.multipart.PartOutput;
 import com.google.apigee.xml.XPathEvaluator;
 import com.google.apigee.xml.XmlUtils;
-import com.google.common.primitives.Bytes;
 import com.google.common.io.ByteStreams;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -96,8 +95,7 @@ public class XopEditor extends CalloutBase implements Execution {
         throw new IllegalStateException("source message is null.");
       }
       String originalContentType = message.getHeader("content-type");
-      MultipartInput mpi =
-        new MultipartInput(message.getContentAsStream(), originalContentType);
+      MultipartInput mpi = new MultipartInput(message.getContentAsStream(), originalContentType);
 
       Map<String, String> params = MultipartInput.parseParams(originalContentType);
       if (params.get("boundary") == null) {
@@ -124,9 +122,7 @@ public class XopEditor extends CalloutBase implements Execution {
       for (String headerName : partInput1.getHeaderNames()) {
         partOutput1.setHeaderField(headerName, partInput1.getHeaderField(headerName));
       }
-      partOutput1
-        .getOutputStream()
-        .write(transformedXml.getBytes(StandardCharsets.UTF_8));
+      partOutput1.getOutputStream().write(transformedXml.getBytes(StandardCharsets.UTF_8));
 
       // 2. extract the zip attachment here
       PartInput partInput2 = mpi.nextPart();
@@ -141,24 +137,19 @@ public class XopEditor extends CalloutBase implements Execution {
       for (String headerName : partInput2.getHeaderNames()) {
         partOutput2.setHeaderField(headerName, partInput2.getHeaderField(headerName));
       }
-      ByteStreams.copy(partInput2.getInputStream(),
-                       partOutput2.getOutputStream());
+      ByteStreams.copy(partInput2.getInputStream(), partOutput2.getOutputStream());
 
       // 3. concatenate the result and replace
       mpo.close();
-      message.setContent(
-          new ByteArrayInputStream(out.toByteArray()));
+      message.setContent(new ByteArrayInputStream(out.toByteArray()));
 
       return ExecutionResult.SUCCESS;
     } catch (IllegalStateException exc1) {
-      String stacktrace = getStackTraceAsString(exc1);
-      System.out.printf(stacktrace);
       setExceptionVariables(exc1, msgCtxt);
       return ExecutionResult.ABORT;
     } catch (Exception e) {
       if (getDebug()) {
         String stacktrace = getStackTraceAsString(e);
-        System.out.printf(stacktrace);
         msgCtxt.setVariable(varName("stacktrace"), stacktrace);
       }
       setExceptionVariables(e, msgCtxt);

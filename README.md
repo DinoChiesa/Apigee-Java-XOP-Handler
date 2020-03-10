@@ -1,10 +1,13 @@
 # Apigee Edge XOP Editor
 
 This directory contains the Java source code and pom.xml file required to build
-a Java callout that reads a multipart/related payload with a [XOP](https://www.w3.org/TR/xop10/#xop_include) message payload, parses the SOAP portion
-to remove the UsernameToken, and then replaces that in the message.
+a Java callout that reads a multipart/related payload with a
+[XOP](https://www.w3.org/TR/xop10/#xop_include) message payload, parses the SOAP
+portion to remove the UsernameToken, and then replaces the modified SOAP payload
+in the message. The XOP attachment remains unchanged.
 
-For parsing the multipart/related data, this callout relies on the BSD-licensed code lifted from [danieln](https://github.com/DanielN/multipart-handler/).
+For parsing the multipart/related data, this callout relies on the BSD-licensed
+code forked from [danieln](https://github.com/DanielN/multipart-handler/).
 
 ## Disclaimer
 
@@ -21,9 +24,9 @@ If you want to build it, the
 instructions are at the bottom of this readme.
 
 
-1. copy the jar file, available in
-   target/edge-custom-xop-editor-20200309.jar, and its dependency
-   (multipart-handler-20200309-1635.jar), to your apiproxy/resources/java directory. You can
+1. copy the callout jar file, available in
+   `target/edge-custom-xop-editor-\*.jar`, and its dependency
+   `multipart-handler-\*.jar`, to your apiproxy/resources/java directory. You can
    do this offline, or using the graphical Proxy Editor in the Apigee
    Edge Admin Portal.
 
@@ -37,7 +40,7 @@ instructions are at the bottom of this readme.
        <Property name="source">message</Property>
      </Properties>
      <ClassName>com.google.apigee.edgecallouts.XopEditor</ClassName>
-     <ResourceURL>java://edge-custom-xop-editor-20200309.jar</ResourceURL>
+     <ResourceURL>java://edge-custom-xop-editor-20200310-u1.jar</ResourceURL>
    </JavaCallout>
    ```
 
@@ -59,7 +62,6 @@ instructions are at the bottom of this readme.
 This repo includes a single callout class,
 
 * com.google.apigee.edgecallouts.XopEditor - edit a XOP payload
-
 
 The inbound message should look like this:
 ```
@@ -118,16 +120,18 @@ Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>
 The callout strips out the UsernameToken element and resets the message.content variable.
 
 
-## Notes
+## Additional Notes
 
-1. This callout uses a modified version of the multipart-handler module.
+1. This callout uses a modified version of the multipart-handler module. The
+   source of that version is included here.
+
    The modifications include:
    * mark one private static method as public on MultipartInput
    * expose one new method on PartInput: getHeaderNames()
 
 2. The callout is fairly rigid. It handles only:
    * messages with 2 parts
-   * the first part must have content-type: application/soap+xml or text/xml, and
+   * the first part must have content-type: `application/soap+xml` or `text/xml`, and
      must be a valid SOAP message.
    * the second part must have content-type: application/zip
 
@@ -164,16 +168,22 @@ Building from source requires Java 1.8, and Maven.
 
 1. unpack (if you can read this, you've already done that).
 
-2. Before building _the first time_, configure the build on your machine by loading the Apigee jars into your local cache:
+2. Before building _the first time_, configure the build on your machine by
+   loading the Apigee jars into your local cache:
+
   ```
   ./buildsetup.sh
   ```
 
 3. Build with maven.
   ```
+  cd callout
   mvn clean package
   ```
-  This will build the jar and also run all the tests, and copy the jar to the resource directory in the sample apiproxy bundle.
+
+  This will build the dependency jar, and the callout jar, and then also run all
+  the tests. After successful tests, it will copy the jar to the resource
+  directory in the sample apiproxy bundle.
 
 
 ## License

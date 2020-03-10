@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.apigee.callout</groupId>
   <artifactId>edge-custom-xop-editor</artifactId>
-  <version>20200309</version>
+  <version>20200310</version>
   <name>EdgeCustomXopEditor</name>
   <url>http://maven.apache.org</url>
   <packaging>jar</packaging>
@@ -16,7 +16,6 @@
     <apiproxy.java.rsrc.dir>../bundle/apiproxy/resources/java</apiproxy.java.rsrc.dir>
     <testng.version>6.8.7</testng.version> <!-- current: 6.9.4 -->
     <jmockit.version>1.7</jmockit.version>
-    <jackson.version>[2.9.10.3,)</jackson.version>
   </properties>
 
   <repositories>
@@ -33,7 +32,7 @@
     <dependency>
       <groupId>com.github.danieln</groupId>
       <artifactId>multipart-handler</artifactId>
-      <version>20200310-0929</version>
+      <version>20200310-1050</version>
     </dependency>
 
     <dependency>

@@ -3,5 +3,5 @@
     <Property name="source">message</Property>
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopEditor</ClassName>
-  <ResourceURL>java://edge-custom-xop-editor-20200309.jar</ResourceURL>
+  <ResourceURL>java://edge-custom-xop-editor-20200310.jar</ResourceURL>
 </JavaCallout>

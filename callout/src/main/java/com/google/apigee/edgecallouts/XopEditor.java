@@ -95,21 +95,31 @@ public class XopEditor extends CalloutBase implements Execution {
       if (message == null) {
         throw new IllegalStateException("source message is null.");
       }
+      String originalContentType = message.getHeader("content-type");
       MultipartInput mpi =
-          new MultipartInput(message.getContentAsStream(), message.getHeader("content-type"));
+        new MultipartInput(message.getContentAsStream(), originalContentType);
+
+      Map<String, String> params = MultipartInput.parseParams(originalContentType);
+      if (params.get("boundary") == null) {
+        throw new IllegalStateException("no boundary found");
+      }
+
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      MultipartOutput mpo = new MultipartOutput(out, originalContentType, params.get("boundary"));
 
       // 1. extract and transform the XML here
       PartInput partInput1 = mpi.nextPart();
       String ctype1 = partInput1.getContentType();
-      if (ctype1 == null || !ctype1.startsWith("application/soap+xml")) {
+      if (ctype1 == null) {
+        throw new IllegalStateException("no content-type found (part1)");
+      }
+      if (!ctype1.startsWith("application/soap+xml") && !ctype1.startsWith("text/xml")) {
         throw new IllegalStateException("unexpected content-type (part1)");
       }
       InputStream in1 = partInput1.getInputStream();
       String transformedXml = removeUsernameToken(in1);
       msgCtxt.setVariable(varName("transformed"), transformedXml);
 
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      MultipartOutput mpo = new MultipartOutput(out);
       PartOutput partOutput1 = mpo.newPart();
       for (String headerName : partInput1.getHeaderNames()) {
         partOutput1.setHeaderField(headerName, partInput1.getHeaderField(headerName));
@@ -121,10 +131,12 @@ public class XopEditor extends CalloutBase implements Execution {
       // 2. extract the zip attachment here
       PartInput partInput2 = mpi.nextPart();
       String ctype2 = partInput2.getContentType();
-      if (ctype2 == null || !ctype2.startsWith("application/zip")) {
+      if (ctype2 == null) {
+        throw new IllegalStateException("no content-type found (part2)");
+      }
+      if (!ctype2.startsWith("application/zip")) {
         throw new IllegalStateException("unexpected content-type (part2)");
       }
-
       PartOutput partOutput2 = mpo.newPart();
       for (String headerName : partInput2.getHeaderNames()) {
         partOutput2.setHeaderField(headerName, partInput2.getHeaderField(headerName));

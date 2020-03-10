@@ -122,7 +122,7 @@ The callout strips out the UsernameToken element and resets the message.content 
 
 The callout is fairly rigid. It handles only:
 * messages with 2 parts
-* the first part must have content-type: application/soap+xml, and
+* the first part must have content-type: application/soap+xml or text/xml, and
   must be a valid SOAP message.
 * the second part must have content-type: application/zip
 

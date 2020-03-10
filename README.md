@@ -65,7 +65,6 @@ The inbound message should look like this:
 ```
 --MIME_boundary
 Content-Type: application/soap+xml; charset=UTF-8
-Content-Transfer-Encoding: 8bit
 Content-ID: <rootpart@soapui.org>
 
 <S:Envelope xmlns:S='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -106,10 +105,27 @@ Content-ID: <rootpart@soapui.org>
 </S:Envelope>
 
 --MIME_boundary
+Content-Type: application/zip
+Content-Transfer-Encoding: binary
+Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>
+
+...binary zip data...
+
+--MIME_boundary--
+
 ```
 
 The callout strips out the UsernameToken element and resets the message.content variable.
 
+
+## Notes
+
+The callout is fairly rigid. It handles only: 
+* messages with 2 parts
+* the first part must have content-type: application/soap+xml, and 
+  must be a valid SOAP message.
+* the second part must have content-type: application/zip
+* 
 
 ## Example API Proxy
 
@@ -117,6 +133,16 @@ You can find an example proxy bundle that uses the policy, [here in this repo](b
 The example proxy accepts a post.
 
 You must deploy the proxy in order to invoke it.
+
+Invoke it like this:
+
+```
+ORG=myorg
+ENV=myenv
+curl -i -X POST --data-binary @example.txt \
+   -H "content-type: Multipart/Related; boundary=MIME_boundary; start='<rootpart@soapui.org>'" \
+   https://$ORG-$ENV.apigee.net/xop-editor/t1
+```
 
 
 ## Building

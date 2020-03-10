@@ -1,0 +1,50 @@
+--MIME_boundary
+Content-Type: application/soap+xml; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Content-ID: <rootpart@soapui.org>
+
+<S:Envelope xmlns:S='http://schemas.xmlsoap.org/soap/envelope/'>
+   <S:Header>
+     <wsse:Security
+         xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>
+       <wsse:UsernameToken
+           xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>
+         <wsse:Username
+             xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>XXXXXX</wsse:Username>
+         <wsse:Password
+             xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>XXXXXX</wsse:Password>
+       </wsse:UsernameToken>
+     </wsse:Security>
+   </S:Header>
+   <S:Body>
+     <GenericRequest
+         xmlns='http://www.oracle.com/UCM' webKey='cs'>
+       <Service IdcService='CHECKIN_UNIVERSAL'>
+         <Document>
+           <Field name='UserDateFormat'>iso8601</Field>
+           <Field name='UserTimeZone'>UTC</Field>
+           <Field name='dDocName'>201807111403445918-1-464</Field>
+           <Field name='dSecurityGroup'>FAFusionImportExport</Field>
+           <Field name='dDocAccount'>hcm$/dataloader$/import$</Field>
+           <Field name='dDocType'>Application</Field>
+           <Field name='dDocTitle'>201807111403445918_76_I228_1_ValueSet_Budget_Center_ID_Independent.zip</Field>
+           <File name='primaryFile' href='201807111403445918_76_I228_1_ValueSet_Budget_Center_ID_Independent.zip'>
+             <Contents>
+               <Include
+                   xmlns='http://www.w3.org/2004/08/xop/include' href='cid:0b83cd6b-af15-45d2-bbda-23895de2a73d'/>
+             </Contents>
+           </File>
+         </Document>
+       </Service>
+     </GenericRequest>
+   </S:Body>
+</S:Envelope>
+
+--MIME_boundary
+Content-Type: application/zip
+Content-Transfer-Encoding: binary
+Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>
+
+...binary zip data...
+
+--MIME_boundary--

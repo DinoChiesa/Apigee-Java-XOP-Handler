@@ -1,7 +1,7 @@
 # Apigee Edge XOP Editor
 
 This directory contains the Java source code and pom.xml file required to build
-a Java callout that reads a multipart/related payload, parses the SOAP portion
+a Java callout that reads a multipart/related payload with a [XOP](https://www.w3.org/TR/xop10/#xop_include) message payload, parses the SOAP portion
 to remove the UsernameToken, and then replaces that in the message.
 
 For parsing the multipart/related data, this callout relies on the BSD-licensed code lifted from [danieln](https://github.com/DanielN/multipart-handler/).
@@ -120,12 +120,16 @@ The callout strips out the UsernameToken element and resets the message.content 
 
 ## Notes
 
-The callout is fairly rigid. It handles only: 
+The callout is fairly rigid. It handles only:
 * messages with 2 parts
-* the first part must have content-type: application/soap+xml, and 
+* the first part must have content-type: application/soap+xml, and
   must be a valid SOAP message.
 * the second part must have content-type: application/zip
-* 
+
+You could use this as a starting point, if you wanted to do something different
+with a XOP message. The multipart-handler class also allows you to construct XOP
+messages.
+
 
 ## Example API Proxy
 

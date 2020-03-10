@@ -120,15 +120,24 @@ The callout strips out the UsernameToken element and resets the message.content 
 
 ## Notes
 
-The callout is fairly rigid. It handles only:
-* messages with 2 parts
-* the first part must have content-type: application/soap+xml or text/xml, and
-  must be a valid SOAP message.
-* the second part must have content-type: application/zip
+1. This callout uses a modified version of the multipart-handler module.
+   The modifications include:
+   * mark one private static method as public on MultipartInput
+   * expose one new method on PartInput: getHeaderNames()
 
-You could use this as a starting point, if you wanted to do something different
-with a XOP message. The multipart-handler class also allows you to construct XOP
-messages.
+2. The callout is fairly rigid. It handles only:
+   * messages with 2 parts
+   * the first part must have content-type: application/soap+xml or text/xml, and
+     must be a valid SOAP message.
+   * the second part must have content-type: application/zip
+
+   You could use this as-is, _or_, use it as a starting point, if you wanted to
+   do something different with a XOP message.
+
+3. The multipart-handler module also allows you to construct XOP messages. So
+   you could use the code here as an starting point to a callout that accepts an
+   inbound binary stream, and then constructs a SOAP MTOM+XOP message. Lots of
+   other possibilities, of course.
 
 
 ## Example API Proxy

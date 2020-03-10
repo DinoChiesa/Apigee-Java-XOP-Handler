@@ -136,12 +136,12 @@ variable.
    * messages with 2 parts
    * the first part must have content-type: `application/soap+xml` or `text/xml`, and
      must be a valid SOAP message.
-   * the second part must have content-type: application/zip
+   * the second part must have content-type: `application/zip` or `application/octet-stream`
 
-   You could use this as-is, _or_, use it as a starting point, if you wanted to
-   do something different with a XOP message.
+3. You could use this callout as-is, _or_, use it as a starting point, if you
+   wanted to do something different with a XOP message.
 
-3. The multipart-handler module also allows you to construct XOP messages. So
+   The multipart-handler module also allows you to construct XOP messages. So
    you could use the code here as an starting point to a callout that accepts an
    inbound binary stream, and then constructs a SOAP MTOM+XOP message. Lots of
    other possibilities, of course.

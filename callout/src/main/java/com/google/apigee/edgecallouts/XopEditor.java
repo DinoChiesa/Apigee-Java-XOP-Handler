@@ -23,11 +23,15 @@ import com.apigee.flow.execution.spi.Execution;
 import com.apigee.flow.message.Message;
 import com.apigee.flow.message.MessageContext;
 import com.github.danieln.multipart.MultipartInput;
+import com.github.danieln.multipart.MultipartOutput;
 import com.github.danieln.multipart.PartInput;
+import com.github.danieln.multipart.PartOutput;
 import com.google.apigee.xml.XPathEvaluator;
 import com.google.apigee.xml.XmlUtils;
 import com.google.common.primitives.Bytes;
+import com.google.common.io.ByteStreams;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -91,32 +95,47 @@ public class XopEditor extends CalloutBase implements Execution {
       if (message == null) {
         throw new IllegalStateException("source message is null.");
       }
-      MultipartInput mp =
+      MultipartInput mpi =
           new MultipartInput(message.getContentAsStream(), message.getHeader("content-type"));
 
       // 1. extract and transform the XML here
-      PartInput part1 = mp.nextPart();
-      String ctype1 = part1.getContentType();
+      PartInput partInput1 = mpi.nextPart();
+      String ctype1 = partInput1.getContentType();
       if (ctype1 == null || !ctype1.startsWith("application/soap+xml")) {
         throw new IllegalStateException("unexpected content-type (part1)");
       }
-      InputStream in1 = part1.getInputStream();
+      InputStream in1 = partInput1.getInputStream();
       String transformedXml = removeUsernameToken(in1);
       msgCtxt.setVariable(varName("transformed"), transformedXml);
 
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      MultipartOutput mpo = new MultipartOutput(out);
+      PartOutput partOutput1 = mpo.newPart();
+      for (String headerName : partInput1.getHeaderNames()) {
+        partOutput1.setHeaderField(headerName, partInput1.getHeaderField(headerName));
+      }
+      partOutput1
+        .getOutputStream()
+        .write(transformedXml.getBytes(StandardCharsets.UTF_8));
+
       // 2. extract the zip attachment here
-      PartInput part2 = mp.nextPart();
-      String ctype2 = part2.getContentType();
+      PartInput partInput2 = mpi.nextPart();
+      String ctype2 = partInput2.getContentType();
       if (ctype2 == null || !ctype2.startsWith("application/zip")) {
         throw new IllegalStateException("unexpected content-type (part2)");
       }
-      InputStream in2 = part2.getInputStream();
-      byte[] zip = streamToByteArray(in2);
+
+      PartOutput partOutput2 = mpo.newPart();
+      for (String headerName : partInput2.getHeaderNames()) {
+        partOutput2.setHeaderField(headerName, partInput2.getHeaderField(headerName));
+      }
+      ByteStreams.copy(partInput2.getInputStream(),
+                       partOutput2.getOutputStream());
 
       // 3. concatenate the result and replace
+      mpo.close();
       message.setContent(
-          new ByteArrayInputStream(
-              Bytes.concat(transformedXml.getBytes(StandardCharsets.UTF_8), zip)));
+          new ByteArrayInputStream(out.toByteArray()));
 
       return ExecutionResult.SUCCESS;
     } catch (IllegalStateException exc1) {

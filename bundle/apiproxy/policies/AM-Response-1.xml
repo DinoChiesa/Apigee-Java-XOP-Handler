@@ -1,9 +1,12 @@
 <AssignMessage name='AM-Response-1'>
   <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+  <Copy source="request">
+    <Payload>true</Payload>
+    <Headers>
+      <Header name='Content-type'/>
+    </Headers>
+  </Copy>
   <Set>
-    <Payload contentType='application/json'>{
-    "message" : "OK"
-}</Payload>
     <StatusCode>200</StatusCode>
     <ReasonPhrase>OK</ReasonPhrase>
   </Set>

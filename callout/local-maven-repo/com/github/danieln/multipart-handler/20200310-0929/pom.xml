@@ -4,7 +4,7 @@
   <groupId>com.github.danieln</groupId>
   <artifactId>multipart-handler</artifactId>
   <packaging>jar</packaging>
-  <version>20200309-1635</version>
+  <version>20200310-0929</version>
   <name>MIME multipart encoder/decoder</name>
   <url>https://github.com/DanielN/multipart-handler</url>
   <properties>

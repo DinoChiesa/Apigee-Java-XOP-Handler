@@ -20,6 +20,8 @@
   </properties>
 
   <repositories>
+    <!-- com.github.danieln.multipart-handler
+         is not available in a remote maven repo -->
     <repository>
       <id>local-maven-repo</id>
       <url>file:./local-maven-repo</url>
@@ -28,11 +30,10 @@
 
   <dependencies>
 
-
     <dependency>
       <groupId>com.github.danieln</groupId>
       <artifactId>multipart-handler</artifactId>
-      <version>20200309-1635</version>
+      <version>20200310-0929</version>
     </dependency>
 
     <dependency>

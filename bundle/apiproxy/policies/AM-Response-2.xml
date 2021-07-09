@@ -1,0 +1,13 @@
+<AssignMessage name='AM-Response-2'>
+  <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+  <Set>
+    <Payload>{xop_extracted_xml}</Payload>
+    <Headers>
+      <Header name='Content-type'>text/xml</Header>
+    </Headers>
+  </Set>
+  <Set>
+    <StatusCode>200</StatusCode>
+    <ReasonPhrase>OK</ReasonPhrase>
+  </Set>
+</AssignMessage>

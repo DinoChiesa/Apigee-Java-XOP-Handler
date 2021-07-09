@@ -1,7 +1,7 @@
 <ProxyEndpoint name='default'>
-  <Description>Proxy for Java callout XOP Editor</Description>
+  <Description>Proxy for Java callout XOP Handler</Description>
   <HTTPProxyConnection>
-    <BasePath>/xop-editor</BasePath>
+    <BasePath>/xop-handler</BasePath>
     <Properties/>
     <VirtualHost>secure</VirtualHost>
   </HTTPProxyConnection>
@@ -27,7 +27,7 @@
 
   <Flows>
     <Flow name='test 1'>
-      <Description>parse a XOP document</Description>
+      <Description>edit a XOP document</Description>
       <!--
           Example invocation:
 
@@ -46,6 +46,28 @@
         </Step>
       </Response>
       <Condition>(proxy.pathsuffix MatchesPath "/t1") and (request.verb = "POST")</Condition>
+    </Flow>
+
+        <Flow name='test 2'>
+      <Description>parse a XOP document and extract soap</Description>
+      <!--
+          Example invocation:
+
+       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-editor/t2
+
+      -->
+      <Request>
+        <Step>
+          <Name>Java-ProcessXop-2</Name>
+        </Step>
+      </Request>
+
+      <Response>
+        <Step>
+          <Name>AM-Response-2</Name>
+        </Step>
+      </Response>
+      <Condition>(proxy.pathsuffix MatchesPath "/t2") and (request.verb = "POST")</Condition>
     </Flow>
 
     <Flow name='unknown request'>

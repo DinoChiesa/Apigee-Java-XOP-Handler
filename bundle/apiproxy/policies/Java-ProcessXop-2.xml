@@ -1,7 +1,7 @@
-<JavaCallout name='Java-ProcessXop-1'>
+<JavaCallout name='Java-ProcessXop-2'>
   <Properties>
     <Property name="source">message</Property>
-    <Property name="action">edit_1</Property>
+    <Property name="action">extract_soap</Property>
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
   <ResourceURL>java://apigee-custom-xop-handler-20210708.jar</ResourceURL>

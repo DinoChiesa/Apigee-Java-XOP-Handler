@@ -1,4 +1,4 @@
-// Copyright 2017-2018 Google LLC.
+// Copyright 2017-2021 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ package com.google.apigee.xml;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringWriter;
 import java.io.StringReader;
+import java.io.StringWriter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -28,61 +28,63 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import org.w3c.dom.Document;
+import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-import org.xml.sax.EntityResolver;
-import org.w3c.dom.Document;
 
 public class XmlUtils {
 
-    private static DocumentBuilder getBuilder() throws ParserConfigurationException {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setNamespaceAware(true);
-        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false);
-        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+  private static DocumentBuilder getBuilder() throws ParserConfigurationException {
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    factory.setNamespaceAware(true);
+    factory.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false);
+    factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
 
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        // prevent DTD entities from being resolved.
-        builder.setEntityResolver(new EntityResolver() {
-            @Override
-            public InputSource resolveEntity(String publicId, String systemId)
-                    throws SAXException, IOException {
-                return new InputSource(new StringReader(""));
-            }
+    DocumentBuilder builder = factory.newDocumentBuilder();
+    // prevent DTD entities from being resolved.
+    builder.setEntityResolver(
+        new EntityResolver() {
+          @Override
+          public InputSource resolveEntity(String publicId, String systemId)
+              throws SAXException, IOException {
+            return new InputSource(new StringReader(""));
+          }
         });
 
-        return builder;
-    }
-    public static Document parseXml(InputStream in)
-        throws IOException, SAXException, ParserConfigurationException {
-        DocumentBuilder builder = getBuilder();
-        InputStream bin = new BufferedInputStream(in);
-        Document ret = builder.parse(new InputSource(bin));
-        return ret;
-    }
-    public static Document parseXml(String s)
-        throws IOException, SAXException, ParserConfigurationException {
-        DocumentBuilder builder = getBuilder();
-        InputSource is = new InputSource();
-        is.setCharacterStream(new StringReader(s));
-        Document ret = builder.parse(is);
-        return ret;
-    }
+    return builder;
+  }
 
-    public static String toString(Document doc) throws TransformerException {
-        return XmlUtils.toString(doc, false);
-    }
+  public static Document parseXml(InputStream in)
+      throws IOException, SAXException, ParserConfigurationException {
+    DocumentBuilder builder = getBuilder();
+    InputStream bin = new BufferedInputStream(in);
+    Document ret = builder.parse(new InputSource(bin));
+    return ret;
+  }
 
-    public static String toString(Document doc, boolean pretty) throws TransformerException {
-        DOMSource domSource = new DOMSource(doc);
-        StringWriter writer = new StringWriter();
-        StreamResult result = new StreamResult(writer);
-        TransformerFactory tf = TransformerFactory.newInstance();
-        Transformer transformer = tf.newTransformer();
-        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-        if (pretty)
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.transform(domSource, result);
-        return writer.toString();
-    }
+  public static Document parseXml(String s)
+      throws IOException, SAXException, ParserConfigurationException {
+    DocumentBuilder builder = getBuilder();
+    InputSource is = new InputSource();
+    is.setCharacterStream(new StringReader(s));
+    Document ret = builder.parse(is);
+    return ret;
+  }
+
+  public static String toString(Document doc) throws TransformerException {
+    return XmlUtils.toString(doc, false);
+  }
+
+  public static String toString(Document doc, boolean pretty) throws TransformerException {
+    DOMSource domSource = new DOMSource(doc);
+    StringWriter writer = new StringWriter();
+    StreamResult result = new StreamResult(writer);
+    TransformerFactory tf = TransformerFactory.newInstance();
+    Transformer transformer = tf.newTransformer();
+    transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+    if (pretty) transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+    transformer.transform(domSource, result);
+    return writer.toString();
+  }
 }

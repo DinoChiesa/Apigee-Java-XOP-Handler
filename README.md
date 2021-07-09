@@ -1,33 +1,39 @@
-# Apigee Edge XOP Editor
+# Apigee XOP Handler
 
 This directory contains the Java source code and pom.xml file required to build
 a Java callout that reads a multipart/related payload with a
-[XOP](https://www.w3.org/TR/xop10/#xop_include) message payload, parses the SOAP
-portion to remove the UsernameToken, and then replaces the modified SOAP payload
-in the message. The XOP attachment remains unchanged.
+[XOP](https://www.w3.org/TR/xop10/#xop_include) message payload.
+
+The callout can do one of two things with that payload:
+
+1. parse the SOAP
+   portion and extract it to a variable.
+
+2. parse the SOAP portion to remove the UsernameToken in the SOAP Header, and
+   then replaces the modified SOAP payload in the message. The XOP attachment
+   remains unchanged.
 
 For parsing the multipart/related data, this callout relies on the BSD-licensed
 code forked from [danieln](https://github.com/DanielN/multipart-handler/).
 
 ## Disclaimer
 
-This example is not an official Google product, nor is it part of an official Google product.
-
+This example is not an official Google product, nor is it part of an official
+Google product.
 
 ## Using this policy
 
 You do not need to build the source code in order to use the policy in
-Apigee Edge. All you need is the built JAR, and the appropriate
+Apigee Edge. All you need is the built jar and the dependencies, and the appropriate
 configuration for the policy.
 
 If you want to build it, the instructions are at the bottom of this readme.
 
-
 1. copy the callout jar file, available in
-   `target/edge-custom-xop-editor-\*.jar`, and its dependency
+   `target/apigee-custom-xop-handler-20210708.jar`, and its dependency
    `multipart-handler-\*.jar`, to your apiproxy/resources/java directory. You can
    do this offline, or using the graphical Proxy Editor in the Apigee
-   Edge Admin Portal.
+   Admin UI.
 
 2. include an XML file for the Java callout policy in your
    `apiproxy/resources/policies` directory. It should look something like this:
@@ -36,9 +42,10 @@ If you want to build it, the instructions are at the bottom of this readme.
    <JavaCallout name='Java-ProcessXop-1'>
      <Properties>
        <Property name="source">message</Property>
+       <Property name="action">edit_1</Property>
      </Properties>
-     <ClassName>com.google.apigee.edgecallouts.XopEditor</ClassName>
-     <ResourceURL>java://edge-custom-xop-editor-20200310-u1.jar</ResourceURL>
+     <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
+     <ResourceURL>java://apigee-custom-xop-handler-20210708.jar</ResourceURL>
    </JavaCallout>
    ```
 
@@ -46,17 +53,17 @@ If you want to build it, the instructions are at the bottom of this readme.
    [importAndDeploy.js](https://github.com/DinoChiesa/apigee-edge-js-examples/blob/master/importAndDeploy.js) or
    [apigeetool](https://github.com/apigee/apigeetool-node)
    or similar, to import your proxy into an Edge organization, and then deploy the proxy .
-   Eg, `./importAndDeploy.js -n -v -o ${ORG} -e ${ENV} -d bundle/`
+   Eg, `node importAndDeploy.js -n -v -o ${ORG} -e ${ENV} -d bundle/`
 
 4. Use a client to generate and send http requests to the proxy you just deployed . Eg,
    ```
-   curl -i https://$ORG-$ENV.apigee.net/xop-editor/t1 -X POST -d @xopfile.bin
+   curl -i https://$ORG-$ENV.apigee.net/xop-handler/t1 -X POST -d @xopfile.bin
    ```
 
 
 ## Notes on Usage
 
-This repo includes a single callout class, `com.google.apigee.edgecallouts.XopEditor`.
+This repo includes a single callout class, `com.google.apigee.edgecallouts.XopHandler`.
 
 The inbound message should bear a set of headers that includes a `content-type`
 which indicates "multipart/related":
@@ -65,7 +72,7 @@ which indicates "multipart/related":
 Content-Type: multipart/related; boundary=MIME_boundary; start='<rootpart@soapui.org>'
 ```
 
-...and the message payload should look like this:
+...and the message payload should look _something like_ this:
 ```
 --MIME_boundary
 Content-Type: application/soap+xml; charset=UTF-8
@@ -118,9 +125,28 @@ Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>
 --MIME_boundary--
 ```
 
-The callout strips out the UsernameToken element and sets the modified SOAP
-message, along with the unmodified XOP attachment into the the message.content
-variable.
+The configuration for the callout accepts an `action` Property. 
+
+```xml
+<JavaCallout name='Java-ProcessXop-1'>
+  <Properties>
+    <Property name="source">message</Property>
+    <Property name="action">edit_1</Property>
+  </Properties>
+  <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
+  <ResourceURL>java://apigee-custom-xop-handler-20210708.jar</ResourceURL>
+</JavaCallout>
+```
+
+Depending on the value of that Property, the callout performs different actions: 
+
+| value    | description of behavior |
+| -------- | ----------- | 
+| `edit_1` | In the SOAP part of the message, remove the UsernameToken in the SOAP Header, and then replace the modified SOAP payload in the message. The XOP attachment remains unchanged. This assumes that the message has exactly two parts. | 
+| `extract_soap` | Extract the SOAP portion of the multipart message into a variable. |
+
+As you can see, the behavior for the `edit_1` action is quite particular. In the
+future, we could extend the list of actions to cover other cases.
 
 
 ## Additional Notes
@@ -132,19 +158,21 @@ variable.
    * mark one private static method as public on MultipartInput
    * expose one new method on PartInput: getHeaderNames()
 
-2. The callout is fairly rigid. It handles only:
+2. For the `edit_1` action, the callout is fairly rigid. It handles only:
    * messages with 2 parts
    * the first part must have content-type: `application/soap+xml` or `text/xml`, and
      must be a valid SOAP message.
    * the second part must have content-type: `application/zip` or `application/octet-stream`
 
 3. You could use this callout as-is, _or_, use it as a starting point, if you
-   wanted to do something different with a XOP message.
+   wanted to do something different with a XOP message. If you like, you could
+   contribute your enhancements back to this repo as a pull request.
 
-   The multipart-handler module also allows you to construct XOP messages. So
-   you could use the code here as an starting point to a callout that accepts an
-   inbound binary stream, and then constructs a SOAP MTOM+XOP message. Lots of
-   other possibilities, of course.
+   The multipart-handler module also allows you to construct XOP messages. So As
+   one example for additional capability, you could use the code here as an
+   starting point to a callout that accepts an inbound binary stream, and then
+   constructs a SOAP MTOM+XOP message. There are lots of other possibilities, of
+   course.
 
 
 ## Example API Proxy
@@ -161,7 +189,7 @@ ORG=myorg
 ENV=myenv
 curl -i -X POST --data-binary @example.txt \
    -H "content-type: Multipart/Related; boundary=MIME_boundary; start='<rootpart@soapui.org>'" \
-   https://$ORG-$ENV.apigee.net/xop-editor/t1
+   https://$ORG-$ENV.apigee.net/xop-handler/t1
 ```
 
 
@@ -191,7 +219,7 @@ Building from source requires Java 1.8, and Maven.
 
 ## License
 
-This material is Copyright 2018-2020 Google LLC.  and is licensed under the
+This material is Copyright 2018-2021 Google LLC and is licensed under the
 [Apache 2.0 License](LICENSE). This includes the Java code as well as the API
 Proxy configuration.
 

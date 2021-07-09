@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Google Inc.
+// Copyright 2018-2021 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
 //
 // ------------------------------------------------------------------
 
-package com.google.apigee.testng.tests;
+package com.google.apigee.edgecallouts;
 
 import com.apigee.flow.execution.ExecutionContext;
 import com.apigee.flow.execution.ExecutionResult;
 import com.apigee.flow.message.Message;
 import com.apigee.flow.message.MessageContext;
-import com.google.apigee.edgecallouts.XopEditor;
+import com.google.apigee.xml.XmlUtils;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -34,8 +34,9 @@ import org.apache.commons.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.w3c.dom.Document;
 
-public class TestXopEditor {
+public class TestXopHandler {
   private static final String testDataDir = "src/test/resources/test-data";
 
   MessageContext msgCtxt;
@@ -246,7 +247,7 @@ public class TestXopEditor {
     props.put("source", "message");
     props.put("debug", "true");
 
-    XopEditor callout = new XopEditor(props);
+    XopHandler callout = new XopHandler(props);
 
     // execute and retrieve output
     ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
@@ -268,6 +269,69 @@ public class TestXopEditor {
   }
 
   @Test
+  public void withBogusAction() throws Exception {
+
+    msgCtxt.setVariable("message.header.mime-version", "1.0");
+    msgCtxt.setVariable(
+        "message.header.content-type",
+        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<rootpart@soapui.org>'");
+
+    msgCtxt.setVariable("message.content", msg1);
+
+    Properties props = new Properties();
+    props.put("source", "message");
+    props.put("action", "bogus");
+    props.put("debug", "true");
+
+    XopHandler callout = new XopHandler(props);
+
+    // execute and retrieve output
+    ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+    ExecutionResult expectedResult = ExecutionResult.ABORT;
+    Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+
+    // check result and output
+    Object error = msgCtxt.getVariable("xop_error");
+    Assert.assertNotNull(error, "error");
+    Assert.assertEquals(error, "specify a valid action.");
+  }
+
+  @Test
+  public void withExtractAction() throws Exception {
+
+    msgCtxt.setVariable("message.header.mime-version", "1.0");
+    msgCtxt.setVariable(
+        "message.header.content-type",
+        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<rootpart@soapui.org>'");
+
+    msgCtxt.setVariable("message.content", msg1);
+
+    Properties props = new Properties();
+    props.put("source", "message");
+    props.put("action", "extract_soap");
+    props.put("debug", "true");
+
+    XopHandler callout = new XopHandler(props);
+
+    // execute and retrieve output
+    ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+    ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+    Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+
+    // check result and output
+    Object error = msgCtxt.getVariable("xop_error");
+    Assert.assertNull(error, "error");
+
+    Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+    Assert.assertNull(stacktrace, "stacktrace");
+
+    String xml = msgCtxt.getVariable("xop_extracted_xml");
+    Assert.assertNotNull(xml, "no extracted content");
+    Document xmlDoc = XmlUtils.parseXml(xml);
+    Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
+  }
+
+  @Test
   public void parseMessage_withWrongContentType() throws Exception {
 
     msgCtxt.setVariable("message.header.mime-version", "1.0");
@@ -281,7 +345,7 @@ public class TestXopEditor {
     props.put("source", "message");
     props.put("debug", "true");
 
-    XopEditor callout = new XopEditor(props);
+    XopHandler callout = new XopHandler(props);
 
     // execute and retrieve output
     ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);

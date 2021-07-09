@@ -1,4 +1,4 @@
-// Copyright 2018-2020 Google LLC
+// Copyright 2018-2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,11 +31,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class CalloutBase {
-  protected static final String variableReferencePatternString = "(.*?)\\{([^\\{\\} ]+?)\\}(.*?)";
-  protected static final Pattern variableReferencePattern =
-      Pattern.compile(variableReferencePatternString);
-  private static final String commonError = "^(.+?)[:;] (.+)$";
-  private static final Pattern commonErrorPattern = Pattern.compile(commonError);
+  private static final Pattern variableReferencePattern =
+    Pattern.compile("(.*?)\\{([^\\{\\} :][^\\{\\} ]*?)\\}(.*?)");
+  private static final Pattern commonErrorPattern = Pattern.compile("^(.+?)[:;] (.+)$");
   protected Map<String, String> properties; // read-only
 
   public CalloutBase(Map properties) {
@@ -93,7 +91,7 @@ public abstract class CalloutBase {
       throw new IllegalStateException(
           String.format("configuration error: %s resolves to an empty string", propName));
     }
-    value = resolvePropertyValue(value, msgCtxt);
+    value = resolveVariableReferences(value, msgCtxt);
     if (value == null || value.equals("")) {
       throw new IllegalStateException(
           String.format("configuration error: %s resolves to an empty string", propName));
@@ -112,31 +110,32 @@ public abstract class CalloutBase {
     if (v.equals("")) {
       return null;
     }
-    v = resolvePropertyValue(v, msgCtxt);
+    v = resolveVariableReferences(v, msgCtxt);
     if (v == null || v.equals("")) {
       return null;
     }
     return v;
   }
 
-  // If the value of a property contains a pair of curlies,
-  // eg, {apiproxy.name}, then "resolve" the value by de-referencing
-  // the context variable whose name appears between the curlies.
-  // If the variable name is not known, then it returns a null.
-  protected String resolvePropertyValue(String spec, MessageContext msgCtxt) {
+  protected String resolveVariableReferences(String spec, MessageContext msgCtxt) {
     Matcher matcher = variableReferencePattern.matcher(spec);
     StringBuffer sb = new StringBuffer();
     while (matcher.find()) {
       matcher.appendReplacement(sb, "");
       sb.append(matcher.group(1));
-      Object v = msgCtxt.getVariable(matcher.group(2));
+      String ref = matcher.group(2);
+      String[] parts = ref.split(":",2);
+      Object v = msgCtxt.getVariable(parts[0]);
       if (v != null) {
         sb.append((String) v);
+      }
+      else if (parts.length>1){
+        sb.append(parts[1]);
       }
       sb.append(matcher.group(3));
     }
     matcher.appendTail(sb);
-    return (sb.length() > 0) ? sb.toString() : null;
+    return sb.toString();
   }
 
   public static byte[] streamToByteArray(InputStream is) throws IOException {

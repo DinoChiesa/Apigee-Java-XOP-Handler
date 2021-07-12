@@ -42,7 +42,7 @@ public class IOUtil {
   public static byte[] readAllBytes(InputStream is) throws IOException {
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     byte[] buf = new byte[BUF_SIZE];
-    for (int len = is.read(buffer); len != -1; len = is.read(buf)) {
+    for (int len = is.read(buf); len != -1; len = is.read(buf)) {
       os.write(buf, 0, len);
     }
     return os.toByteArray();

@@ -33,6 +33,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
 import javax.xml.xpath.XPathConstants;
 import org.w3c.dom.Document;
@@ -43,6 +44,7 @@ public class XopHandler extends CalloutBase implements Execution {
   private static final String varprefix = "xop_";
   private static final boolean wantStringDefault = true;
   private static final XopAction DEFAULT_ACTION = XopAction.EDIT_1;
+  private static final Base64.Encoder b64Encoder = Base64.getEncoder();
 
   public XopHandler(Map properties) {
     super(properties);
@@ -51,6 +53,7 @@ public class XopHandler extends CalloutBase implements Execution {
   enum XopAction {
     EDIT_1,
     EXTRACT_SOAP,
+    TRANSFORM_TO_EMBEDDED,
     UNSPECIFIED;
 
     public static XopAction findByName(String name) {
@@ -100,6 +103,42 @@ public class XopHandler extends CalloutBase implements Execution {
     }
     // delete the node
     currentNode.getParentNode().removeChild(currentNode);
+  }
+
+  private static boolean acceptableAttachmentContentType(String ctype) {
+    return ctype.startsWith("application/zip")
+            || ctype.startsWith("application/octet-stream")
+      || ctype.startsWith("application/pdf");
+  }
+
+  // xmlns:xop='http://www.w3.org/2004/08/xop/include'
+  // <xop:Include href="cid:uuid-here"/>
+  private static String embedAttachment(Document document, InputStream binaryIn) throws Exception {
+    XPathEvaluator xpe = new XPathEvaluator();
+    xpe.registerNamespace(
+        "xop",
+        "http://www.w3.org/2004/08/xop/include");
+    String xpath = "//xop:Include";
+    NodeList nodes = (NodeList) xpe.evaluate(xpath, document, XPathConstants.NODESET);
+    if (nodes.getLength() == 0) {
+          throw new IllegalStateException(
+              "could not find xop:Include element in the XML document");
+    }
+    if (nodes.getLength() != 1) {
+          throw new IllegalStateException(
+              "found more than one xop:Include element in the XML document");
+    }
+
+    // replace the Include element with the referenced text (base64 encoded)
+    Node targetNode = nodes.item(0);
+    Node newNode = document.createTextNode(b64Encoder.encodeToString(IOUtil.readAllBytes(binaryIn)));
+    targetNode.getParentNode().replaceChild(newNode, targetNode);
+
+    // xsi:type="base64binary"
+    // Attr attr = document.createAttribute(parts[0]);
+    // attr.setValue(parts[1]);
+
+    return XmlUtils.toString(document, true);
   }
 
   private static String removeUsernameToken(InputStream in1) throws Exception {
@@ -160,14 +199,13 @@ public class XopHandler extends CalloutBase implements Execution {
         }
         partOutput1.getOutputStream().write(transformedXml.getBytes(StandardCharsets.UTF_8));
 
-        // 2. extract the zip attachment here
+        // 2. extract the attachment here
         PartInput partInput2 = mpi.nextPart();
         String ctype2 = partInput2.getContentType();
         if (ctype2 == null) {
           throw new IllegalStateException("no content-type found (part2)");
         }
-        if (!ctype2.startsWith("application/zip")
-            && !ctype2.startsWith("application/octet-stream")) {
+        if (!acceptableAttachmentContentType(ctype2)) {
           throw new IllegalStateException(
               String.format("unexpected content-type for part #2 (%s)", ctype2));
         }
@@ -180,6 +218,41 @@ public class XopHandler extends CalloutBase implements Execution {
         // 3. concatenate the result and replace
         mpo.close();
         message.setContent(new ByteArrayInputStream(out.toByteArray()));
+
+        return ExecutionResult.SUCCESS;
+      }
+
+      if (calloutAction == XopAction.TRANSFORM_TO_EMBEDDED) {
+        // 1. get the Document for the XML here
+        PartInput partInput1 = mpi.nextPart();
+        String ctype1 = partInput1.getContentType();
+        if (ctype1 == null) {
+          throw new IllegalStateException("no content-type found (part1)");
+        }
+        if (!ctype1.startsWith("application/soap+xml") && !ctype1.startsWith("text/xml")) {
+          throw new IllegalStateException(
+              String.format("unexpected content-type for part #1 (%s)", ctype1));
+        }
+        Document document = XmlUtils.parseXml(partInput1.getInputStream());
+
+        // 2. get the InputStream for the the attachment here
+        PartInput partInput2 = mpi.nextPart();
+        String ctype2 = partInput2.getContentType();
+        if (ctype2 == null) {
+          throw new IllegalStateException("no content-type found (part2)");
+        }
+        if (!acceptableAttachmentContentType(ctype2)) {
+          throw new IllegalStateException(
+              String.format("unexpected content-type for part #2 (%s)", ctype2));
+        }
+
+        // 3. embed the encoded attachment into the XML
+        String resultXml = embedAttachment(document,
+                                           partInput2.getInputStream());
+
+        // 4. set the result as the response stream
+        message.setContent(new ByteArrayInputStream(resultXml.getBytes()));
+        message.setHeader("content-type", "text/xml");
 
         return ExecutionResult.SUCCESS;
       }

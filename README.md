@@ -4,14 +4,17 @@ This directory contains the Java source code and pom.xml file required to build
 a Java callout that reads a multipart/related payload with a
 [XOP](https://www.w3.org/TR/xop10/#xop_include) message payload.
 
-The callout can do one of two things with that payload:
+The callout can do one of three things with that payload:
 
-1. parse the SOAP
-   portion and extract it to a variable.
+1. parse the SOAP/XML portion and extract it to a variable. This 
+   approach ignores the data within the attachment.
 
 2. parse the SOAP portion to remove the UsernameToken in the SOAP Header, and
    then replaces the modified SOAP payload in the message. The XOP attachment
    remains unchanged.
+
+3. transform the message to embed the attachment directly into the XML,
+   base64-encoded.
 
 For parsing the multipart/related data, this callout relies on the BSD-licensed
 code forked from [danieln](https://github.com/DanielN/multipart-handler/).
@@ -125,7 +128,9 @@ Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>
 --MIME_boundary--
 ```
 
-The configuration for the callout accepts an `action` Property. 
+The attachment doesn't have to be a zip. 
+
+The configuration for the callout accepts an `action` Property.
 
 ```xml
 <JavaCallout name='Java-ProcessXop-1'>
@@ -138,16 +143,18 @@ The configuration for the callout accepts an `action` Property.
 </JavaCallout>
 ```
 
-Depending on the value of that Property, the callout performs different actions: 
+Depending on the value of that Property, the callout performs different actions:
 
 | value    | description of behavior |
-| -------- | ----------- | 
-| `edit_1` | In the SOAP part of the message, remove the UsernameToken in the SOAP Header, and then replace the modified SOAP payload in the message. The XOP attachment remains unchanged. This assumes that the message has exactly two parts. | 
+| -------- | ----------- |
+| `edit_1` | In the SOAP part of the message, remove the UsernameToken in the SOAP Header, and then replace the modified SOAP payload in the message. The XOP attachment remains unchanged. |
 | `extract_soap` | Extract the SOAP portion of the multipart message into a variable. |
+| `transform_to_embedded` | Transform the message to embed the binary attachment directly into the XML, as a base64-encoded text node. |
 
 As you can see, the behavior for the `edit_1` action is quite particular. In the
 future, we could extend the list of actions to cover other cases.
 
+The callout assumes that the message has exactly two parts: one XML document, and one attachment.
 
 ## Additional Notes
 
@@ -158,11 +165,11 @@ future, we could extend the list of actions to cover other cases.
    * mark one private static method as public on MultipartInput
    * expose one new method on PartInput: getHeaderNames()
 
-2. For the `edit_1` action, the callout is fairly rigid. It handles only:
+2. For the `edit_1` and `transform_to_embedded` action, the callout is fairly rigid. It handles only:
    * messages with 2 parts
    * the first part must have content-type: `application/soap+xml` or `text/xml`, and
      must be a valid SOAP message.
-   * the second part must have content-type: `application/zip` or `application/octet-stream`
+   * the second part must have content-type: `application/zip` or `application/pdf` or `application/octet-stream`
 
 3. You could use this callout as-is, _or_, use it as a starting point, if you
    wanted to do something different with a XOP message. If you like, you could

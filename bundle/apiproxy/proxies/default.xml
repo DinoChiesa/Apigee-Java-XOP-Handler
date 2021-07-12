@@ -48,7 +48,7 @@
       <Condition>(proxy.pathsuffix MatchesPath "/t1") and (request.verb = "POST")</Condition>
     </Flow>
 
-        <Flow name='test 2'>
+    <Flow name='test 2'>
       <Description>parse a XOP document and extract soap</Description>
       <!--
           Example invocation:
@@ -68,6 +68,28 @@
         </Step>
       </Response>
       <Condition>(proxy.pathsuffix MatchesPath "/t2") and (request.verb = "POST")</Condition>
+    </Flow>
+
+    <Flow name='test 3'>
+      <Description>parse a XOP package and transform it to embedded form</Description>
+      <!--
+          Example invocation:
+
+       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-editor/t3
+
+      -->
+      <Request>
+        <Step>
+          <Name>Java-ProcessXop-3</Name>
+        </Step>
+      </Request>
+
+      <Response>
+        <Step>
+          <Name>AM-Response-1</Name>
+        </Step>
+      </Response>
+      <Condition>(proxy.pathsuffix MatchesPath "/t3") and (request.verb = "POST")</Condition>
     </Flow>
 
     <Flow name='unknown request'>

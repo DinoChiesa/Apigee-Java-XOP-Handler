@@ -7,16 +7,27 @@
   </HTTPProxyConnection>
 
   <FaultRules/>
+  <DefaultFaultRule name="default-fault-rule">
+    <Step>
+      <Name>AM-Inject-Proxy-Revision-Header</Name>
+    </Step>
+    <AlwaysEnforce>true</AlwaysEnforce>
+  </DefaultFaultRule>
 
   <PreFlow name='PreFlow'>
       <Request/>
       <Response>
-        <Step><Name>AM-CleanResponseHeaders</Name></Step>
+        <Step>
+          <Name>AM-CleanResponseHeaders</Name>
+        </Step>
       </Response>
   </PreFlow>
   <PostFlow name='PostFlow'>
       <Request/>
       <Response>
+        <Step>
+          <Name>AM-Inject-Proxy-Revision-Header</Name>
+        </Step>
       </Response>
   </PostFlow>
   <PostClientFlow name='PostFlow'>
@@ -31,7 +42,7 @@
       <!--
           Example invocation:
 
-       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-editor/t1
+       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-handler/t1
 
       -->
       <Request>
@@ -53,7 +64,7 @@
       <!--
           Example invocation:
 
-       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-editor/t2
+       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-handler/t2
 
       -->
       <Request>
@@ -75,7 +86,7 @@
       <!--
           Example invocation:
 
-       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-editor/t3
+       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-handler/t3
 
       -->
       <Request>
@@ -90,6 +101,31 @@
         </Step>
       </Response>
       <Condition>(proxy.pathsuffix MatchesPath "/t3") and (request.verb = "POST")</Condition>
+    </Flow>
+
+    <Flow name='test 4'>
+      <Description>parse a XOP package and transform it to embedded form, then XMLToJSON</Description>
+      <!--
+          Example invocation:
+
+       curl -i -X POST -d @xopdoc.txt https://${ORG}-${ENV}.apigee.net/xop-handler/t4
+
+      -->
+      <Request>
+        <Step>
+          <Name>Java-ProcessXop-3</Name>
+        </Step>
+        <Step>
+          <Name>XMLToJSON-1</Name>
+        </Step>
+      </Request>
+
+      <Response>
+        <Step>
+          <Name>AM-Response-4</Name>
+        </Step>
+      </Response>
+      <Condition>(proxy.pathsuffix MatchesPath "/t4") and (request.verb = "POST")</Condition>
     </Flow>
 
     <Flow name='unknown request'>

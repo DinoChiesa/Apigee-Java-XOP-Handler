@@ -1,0 +1,13 @@
+<AssignMessage name='AM-Response-4'>
+  <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+  <Set>
+    <Payload>{request.content}</Payload>
+    <Headers>
+      <Header name='Content-type'>application/json</Header>
+    </Headers>
+  </Set>
+  <Set>
+    <StatusCode>200</StatusCode>
+    <ReasonPhrase>OK</ReasonPhrase>
+  </Set>
+</AssignMessage>

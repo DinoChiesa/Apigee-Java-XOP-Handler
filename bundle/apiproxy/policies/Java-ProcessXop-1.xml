@@ -4,5 +4,5 @@
     <Property name="action">edit_1</Property>
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20210712.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20210713.jar</ResourceURL>
 </JavaCallout>

@@ -33,8 +33,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.xml.xpath.XPathConstants;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -45,6 +48,10 @@ public class XopHandler extends CalloutBase implements Execution {
   private static final boolean wantStringDefault = true;
   private static final XopAction DEFAULT_ACTION = XopAction.EDIT_1;
   private static final Base64.Encoder b64Encoder = Base64.getEncoder();
+  private static final List<String> DEFAULT_PART1_CTYPES =
+    Arrays.asList("application/soap+xml", "application/xop+xml", "text/xml");
+  private static final List<String> DEFAULT_PART2_CTYPES =
+    Arrays.asList("application/zip","application/octet-stream","image/jpeg","image/png","application/pdf");
 
   public XopHandler(Map properties) {
     super(properties);
@@ -81,6 +88,36 @@ public class XopHandler extends CalloutBase implements Execution {
     return xopAction;
   }
 
+  private static String unquote(String s) {
+    int L = s.length();
+    if (L >= 2 && s.charAt(0) == '"' && s.charAt(L - 1) == '"') {
+      s = s.substring(1, L - 1);
+    }
+    return s;
+  }
+
+  private List<String> getList(MessageContext msgCtxt, String property, List<String> defaultValue) {
+    String ctypes = this.properties.get(property);
+    if (ctypes != null) ctypes = ctypes.trim();
+    if (ctypes == null || ctypes.equals("")) {
+      return defaultValue;
+    }
+    ctypes = resolveVariableReferences(ctypes, msgCtxt);
+    return Arrays
+      .asList(ctypes.split("\\s*,\\s*"))
+      .stream()
+      .map( XopHandler::unquote )
+      .collect(Collectors.toList());
+  }
+
+  private List<String> getAcceptablePart1ContentTypes(MessageContext msgCtxt) {
+    return getList(msgCtxt,"part1-ctypes", DEFAULT_PART1_CTYPES);
+  }
+
+  private List<String> getAcceptableAttachmentContentTypes(MessageContext msgCtxt) {
+    return getList(msgCtxt,"part2-ctypes", DEFAULT_PART2_CTYPES);
+  }
+
   public String getVarnamePrefix() {
     return varprefix;
   }
@@ -105,33 +142,46 @@ public class XopHandler extends CalloutBase implements Execution {
     currentNode.getParentNode().removeChild(currentNode);
   }
 
-  private static boolean acceptableAttachmentContentType(String ctype) {
-    return ctype.startsWith("application/zip")
-            || ctype.startsWith("application/octet-stream")
-      || ctype.startsWith("application/pdf");
+  private static boolean acceptableCtype(List<String> acceptableList, String ctype) {
+    return
+      acceptableList
+      .stream()
+      .anyMatch( s -> ctype.startsWith(s) );
   }
+
+  // private static boolean acceptableAttachmentContentType(String ctype) {
+  //   return ctype.startsWith("application/zip")
+  //       || ctype.startsWith("application/octet-stream")
+  //       || ctype.startsWith("image/jpeg")
+  //       || ctype.startsWith("image/png")
+  //       || ctype.startsWith("application/pdf");
+  // }
+  //
+  // private static boolean acceptablePart1ContentType(String ctype) {
+  //   return ctype.startsWith("application/soap+xml")
+  //       || ctype.startsWith("application/xop+xml")
+  //       || ctype.startsWith("text/xml");
+  // }
 
   // xmlns:xop='http://www.w3.org/2004/08/xop/include'
   // <xop:Include href="cid:uuid-here"/>
   private static String embedAttachment(Document document, InputStream binaryIn) throws Exception {
     XPathEvaluator xpe = new XPathEvaluator();
-    xpe.registerNamespace(
-        "xop",
-        "http://www.w3.org/2004/08/xop/include");
+    xpe.registerNamespace("xop", "http://www.w3.org/2004/08/xop/include");
     String xpath = "//xop:Include";
     NodeList nodes = (NodeList) xpe.evaluate(xpath, document, XPathConstants.NODESET);
     if (nodes.getLength() == 0) {
-          throw new IllegalStateException(
-              "could not find xop:Include element in the XML document");
+      throw new IllegalStateException("could not find xop:Include element in the XML document");
     }
     if (nodes.getLength() != 1) {
-          throw new IllegalStateException(
-              "found more than one xop:Include element in the XML document");
+      throw new IllegalStateException(
+          "found more than one xop:Include element in the XML document");
     }
 
     // replace the Include element with the referenced text (base64 encoded)
     Node targetNode = nodes.item(0);
-    Node newNode = document.createTextNode(b64Encoder.encodeToString(IOUtil.readAllBytes(binaryIn)));
+    Node newNode =
+        document.createTextNode(b64Encoder.encodeToString(IOUtil.readAllBytes(binaryIn)));
     targetNode.getParentNode().replaceChild(newNode, targetNode);
 
     // xsi:type="base64binary"
@@ -175,6 +225,8 @@ public class XopHandler extends CalloutBase implements Execution {
       XopAction calloutAction = getAction(msgCtxt);
       msgCtxt.setVariable(varName("action"), calloutAction.name().toLowerCase());
 
+      List<String> acceptablePart1ContentTypes = getAcceptablePart1ContentTypes(msgCtxt);
+
       if (calloutAction == XopAction.EDIT_1) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         MultipartOutput mpo = new MultipartOutput(out, originalContentType, params.get("boundary"));
@@ -185,7 +237,7 @@ public class XopHandler extends CalloutBase implements Execution {
         if (ctype1 == null) {
           throw new IllegalStateException("no content-type found (part1)");
         }
-        if (!ctype1.startsWith("application/soap+xml") && !ctype1.startsWith("text/xml")) {
+        if (!acceptableCtype(acceptablePart1ContentTypes, ctype1)) {
           throw new IllegalStateException(
               String.format("unexpected content-type for part #1 (%s)", ctype1));
         }
@@ -205,7 +257,8 @@ public class XopHandler extends CalloutBase implements Execution {
         if (ctype2 == null) {
           throw new IllegalStateException("no content-type found (part2)");
         }
-        if (!acceptableAttachmentContentType(ctype2)) {
+        List<String> acceptableAttachmentContentTypes = getAcceptableAttachmentContentTypes(msgCtxt);
+        if (!acceptableCtype(acceptableAttachmentContentTypes, ctype2)) {
           throw new IllegalStateException(
               String.format("unexpected content-type for part #2 (%s)", ctype2));
         }
@@ -229,7 +282,7 @@ public class XopHandler extends CalloutBase implements Execution {
         if (ctype1 == null) {
           throw new IllegalStateException("no content-type found (part1)");
         }
-        if (!ctype1.startsWith("application/soap+xml") && !ctype1.startsWith("text/xml")) {
+        if (!acceptableCtype(acceptablePart1ContentTypes, ctype1)) {
           throw new IllegalStateException(
               String.format("unexpected content-type for part #1 (%s)", ctype1));
         }
@@ -241,14 +294,14 @@ public class XopHandler extends CalloutBase implements Execution {
         if (ctype2 == null) {
           throw new IllegalStateException("no content-type found (part2)");
         }
-        if (!acceptableAttachmentContentType(ctype2)) {
+        List<String> acceptableAttachmentContentTypes = getAcceptableAttachmentContentTypes(msgCtxt);
+        if (!acceptableCtype(acceptableAttachmentContentTypes, ctype2)) {
           throw new IllegalStateException(
               String.format("unexpected content-type for part #2 (%s)", ctype2));
         }
 
         // 3. embed the encoded attachment into the XML
-        String resultXml = embedAttachment(document,
-                                           partInput2.getInputStream());
+        String resultXml = embedAttachment(document, partInput2.getInputStream());
 
         // 4. set the result as the response stream
         message.setContent(new ByteArrayInputStream(resultXml.getBytes()));
@@ -264,7 +317,7 @@ public class XopHandler extends CalloutBase implements Execution {
         if (ctype1 == null) {
           throw new IllegalStateException("no content-type found (part1)");
         }
-        if (!ctype1.startsWith("application/soap+xml") && !ctype1.startsWith("text/xml")) {
+        if (!acceptableCtype(acceptablePart1ContentTypes, ctype1)) {
           throw new IllegalStateException(
               String.format("unexpected content-type for part #1 (%s)", ctype1));
         }

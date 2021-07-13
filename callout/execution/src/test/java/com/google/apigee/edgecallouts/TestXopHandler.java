@@ -28,7 +28,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import com.google.apigee.IOUtil;
 import mockit.Mock;
 import mockit.MockUp;
 import org.apache.commons.io.IOUtils;
@@ -219,24 +218,23 @@ public class TestXopHandler {
           + " <submitClaim>\n"
           + "  <accountNumber>5XJ45-3B2</accountNumber>\n"
           + "  <eventType>accident</eventType>\n"
-          + "  <image xop-mime:content-type='image/jpeg'><xop:Include href='cid:image@insurance.com'/></image>\n"
+          + "  <image xop-mime:content-type='image/bmp'><xop:Include href='cid:image@insurance.com'/></image>\n"
           + " </submitClaim>\n"
           + " </soap:Body>\n"
           + "</soap:Envelope>\n"
           + "\n"
           + "--MIME_boundary\n"
-          + "Content-Type: image/jpeg\n"
+          + "Content-Type: image/bmp\n"
           + "Content-Transfer-Encoding: binary\n"
           + "Content-ID: <image@insurance.com>\n"
           + "\n"
-          + "...binary JPG image...\n"
+          + "...binary BMP image...\n"
           + "\n"
           + "--MIME_boundary--\n"
           + "\n";
 
   @Test
   public void parseMessage() throws Exception {
-
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
@@ -271,7 +269,6 @@ public class TestXopHandler {
 
   @Test
   public void withBogusAction() throws Exception {
-
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
@@ -299,7 +296,6 @@ public class TestXopHandler {
 
   @Test
   public void withExtractAction() throws Exception {
-
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
@@ -364,16 +360,15 @@ public class TestXopHandler {
     Object output = msg.getContent();
     Assert.assertNotNull(output, "no output");
 
-    System.out.printf("Result:\n%s\n", (String)output);
+    System.out.printf("Result:\n%s\n", (String) output);
 
-    //String xml = new String(IOUtil.readAllBytes((InputStream)output), StandardCharsets.UTF_8);
-    Document xmlDoc = XmlUtils.parseXml((String)output);
+    // String xml = new String(IOUtil.readAllBytes((InputStream)output), StandardCharsets.UTF_8);
+    Document xmlDoc = XmlUtils.parseXml((String) output);
     Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
   }
 
   @Test
-  public void parseMessage_withWrongContentType() throws Exception {
-
+  public void unacceptableContentType() throws Exception {
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
@@ -404,5 +399,34 @@ public class TestXopHandler {
     Message msg = msgCtxt.getMessage();
     Object output = msg.getContent();
     Assert.assertNotNull(output, "no output");
+  }
+
+  @Test
+  public void acceptableContentType() throws Exception {
+    msgCtxt.setVariable("message.header.mime-version", "1.0");
+    msgCtxt.setVariable(
+        "message.header.content-type",
+        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<claim@insurance.com>'");
+
+    msgCtxt.setVariable("message.content", msg2);
+
+    Properties props = new Properties();
+    props.put("source", "message");
+    props.put("part2-ctypes", "image.jpeg, image/bmp");
+    props.put("debug", "true");
+
+    XopHandler callout = new XopHandler(props);
+
+    // execute and retrieve output
+    ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+    ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+    Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+
+    // check result and output
+    Object error = msgCtxt.getVariable("xop_error");
+    Assert.assertNull(error, "error");
+
+    Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+    Assert.assertNull(stacktrace, "stacktrace");
   }
 }

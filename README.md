@@ -6,7 +6,7 @@ a Java callout that reads a multipart/related payload with a
 
 The callout can do one of three things with that payload:
 
-1. parse the SOAP/XML portion and extract it to a variable. This 
+1. parse the SOAP/XML portion and extract it to a variable. This
    approach ignores the data within the attachment.
 
 2. parse the SOAP portion to remove the UsernameToken in the SOAP Header, and
@@ -33,7 +33,7 @@ configuration for the policy.
 If you want to build it, the instructions are at the bottom of this readme.
 
 1. copy the callout jar file, available in
-   `target/apigee-custom-xop-handler-20210708.jar`, and its dependency
+   `target/apigee-custom-xop-handler-20210713.jar`, and its dependency
    `multipart-handler-\*.jar`, to your apiproxy/resources/java directory. You can
    do this offline, or using the graphical Proxy Editor in the Apigee
    Admin UI.
@@ -48,7 +48,7 @@ If you want to build it, the instructions are at the bottom of this readme.
        <Property name="action">edit_1</Property>
      </Properties>
      <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-     <ResourceURL>java://apigee-custom-xop-handler-20210708.jar</ResourceURL>
+     <ResourceURL>java://apigee-custom-xop-handler-20210713.jar</ResourceURL>
    </JavaCallout>
    ```
 
@@ -128,20 +128,37 @@ Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>
 --MIME_boundary--
 ```
 
-The attachment doesn't have to be a zip. 
+The attachment doesn't have to be a zip.
 
-The configuration for the callout accepts an `action` Property.
+## Callout Configuration
+
+The configuration for the callout accepts various properties which affects the callout behavior at runtime.
 
 ```xml
 <JavaCallout name='Java-ProcessXop-1'>
+  <!-- specify the properties here -->
   <Properties>
     <Property name="source">message</Property>
     <Property name="action">edit_1</Property>
+    <!-- ...more here... ->
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20210708.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20210713.jar</ResourceURL>
 </JavaCallout>
 ```
+
+| property     | description of behavior |
+| ------------ | ----------------------- |
+| source       | optional. The variable containing the message tha holds the XOP package. Defaults to `message`. |
+| action       | optional. Specify the primary behavior of the callout. Defaults to `edit_1`. For more on these options, see below.  |
+| part1-ctypes | optional. The comma-separated list of acceptable Content-types for the first part of the multi-part message. Defaults to: (application/soap+xml, application/xop+xml, text/xml) |
+| part2-ctypes | optional. The comma-separated list of acceptable Content-types for the second part of the multi-part message. Defaults to: (application/zip, application/octet-stream, image/jpeg, image/png, application/pdf) |
+
+
+### Regarding the action Property
+
+The configuration for the callout accepts an `action` Property.
+
 
 Depending on the value of that Property, the callout performs different actions:
 
@@ -167,11 +184,12 @@ The callout assumes that the message has exactly two parts: one XML document, an
 
 2. For the `edit_1` and `transform_to_embedded` action, the callout is fairly rigid. It handles only:
    * messages with 2 parts
-   * the first part must have content-type: `application/soap+xml` or `text/xml`, and
-     must be a valid SOAP message.
-   * the second part must have content-type: `application/zip` or `application/pdf` or `application/octet-stream`
+   * by default, the first part must have one of these content-types: `application/soap+xml`, `application/xop+xml`, `text/xml`. You can affect this with the `part1-ctypes` property.
+   * by default, the second part must have one of these content-types: `image/jpeg`, `image/png`, `application/zip`, `application/pdf` or `application/octet-stream`. You can affect this with the `part2-ctypes` property.
 
-3. You could use this callout as-is, _or_, use it as a starting point, if you
+3. For the `edit_1` action, the first part must be a valid SOAP 1.1 message, using namespace `http://schemas.xmlsoap.org/soap/envelope/`.
+
+4. You could use this callout as-is, _or_, use it as a starting point, if you
    wanted to do something different with a XOP message. If you like, you could
    contribute your enhancements back to this repo as a pull request.
 

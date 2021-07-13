@@ -140,7 +140,7 @@ The configuration for the callout accepts various properties which affects the c
   <Properties>
     <Property name="source">message</Property>
     <Property name="action">edit_1</Property>
-    <!-- ...more here... ->
+    <!-- ...more here... -->
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
   <ResourceURL>java://apigee-custom-xop-handler-20210713.jar</ResourceURL>
@@ -175,11 +175,11 @@ The callout assumes that the message has exactly two parts: one XML document, an
 
 ## Additional Notes
 
-1. This callout uses a modified version of the multipart-handler module. The
+1. This callout uses a modified version of the multipart-handler module from [danieln](https://github.com/DanielN/multipart-handler/). The
    source of that version is included here.
 
    The modifications include:
-   * mark one private static method as public on MultipartInput
+   * change access on the `parseParams` static method in MultipartInput class from private to public.
    * expose one new method on PartInput: getHeaderNames()
 
 2. For the `edit_1` and `transform_to_embedded` action, the callout is fairly rigid. It handles only:
@@ -198,7 +198,6 @@ The callout assumes that the message has exactly two parts: one XML document, an
    starting point to a callout that accepts an inbound binary stream, and then
    constructs a SOAP MTOM+XOP message. There are lots of other possibilities, of
    course.
-
 
 ## Example API Proxy
 

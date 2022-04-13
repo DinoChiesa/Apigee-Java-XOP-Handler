@@ -1,6 +1,6 @@
 // XopHandler.java
 //
-// Copyright (c) 2018-2021 Google LLC.
+// Copyright (c) 2018-2022 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -165,6 +165,7 @@ public class XopHandler extends CalloutBase implements Execution {
 
   // xmlns:xop='http://www.w3.org/2004/08/xop/include'
   // <xop:Include href="cid:uuid-here"/>
+
   private static String embedAttachment(Document document, InputStream binaryIn) throws Exception {
     XPathEvaluator xpe = new XPathEvaluator();
     xpe.registerNamespace("xop", "http://www.w3.org/2004/08/xop/include");
@@ -180,13 +181,22 @@ public class XopHandler extends CalloutBase implements Execution {
 
     // replace the Include element with the referenced text (base64 encoded)
     Node targetNode = nodes.item(0);
+    Node parent = targetNode.getParentNode();
+    NodeList children = parent.getChildNodes();
+
+    for (int ix = children.getLength()-1; ix >=0; ix--) {
+      Node child = children.item(ix);
+      if (child.getNodeType() == Node.ELEMENT_NODE && child != targetNode) {
+       throw new IllegalStateException(
+           "the xop:Include element is not the sole child of its parent");
+      }
+      parent.removeChild(child);
+    }
+
     Node newNode =
         document.createTextNode(b64Encoder.encodeToString(IOUtil.readAllBytes(binaryIn)));
-    targetNode.getParentNode().replaceChild(newNode, targetNode);
 
-    // xsi:type="base64binary"
-    // Attr attr = document.createAttribute(parts[0]);
-    // attr.setValue(parts[1]);
+    parent.appendChild(newNode);
 
     return XmlUtils.toString(document, true);
   }

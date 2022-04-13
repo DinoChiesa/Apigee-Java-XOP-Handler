@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Google Inc.
+// Copyright 2018-2022 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,12 +22,24 @@ import com.apigee.flow.message.Message;
 import com.apigee.flow.message.MessageContext;
 import com.google.apigee.xml.XmlUtils;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.SequenceInputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
+import java.util.stream.IntStream;
 import mockit.Mock;
 import mockit.MockUp;
 import org.apache.commons.io.IOUtils;
@@ -37,7 +49,7 @@ import org.testng.annotations.Test;
 import org.w3c.dom.Document;
 
 public class TestXopHandler {
-  private static final String testDataDir = "src/test/resources/test-data";
+  private static final String testDataDir = "src/test/resources";
 
   MessageContext msgCtxt;
   InputStream messageContentStream;
@@ -47,6 +59,24 @@ public class TestXopHandler {
   private static String stringify(Object value) {
     if (value != null) return value.toString();
     return "-null-";
+  }
+
+  private static InputStream fileInputStream(String relativeFilename) throws IOException {
+    return new FileInputStream(Paths.get(testDataDir, relativeFilename).toFile());
+  }
+
+  private static File inputStreamToTempFile(InputStream in) throws IOException {
+    File file = File.createTempFile("xophandler-test-", ".tmp");
+    try (OutputStream out = new FileOutputStream(file)) {
+      byte[] buf = new byte[1024];
+      int len;
+      while ((len = in.read(buf)) > 0) {
+        out.write(buf, 0, len);
+      }
+      in.close();
+    }
+
+    return file;
   }
 
   @BeforeMethod()
@@ -151,10 +181,10 @@ public class TestXopHandler {
 
   private static final String msg1 =
       ""
-          + "--MIME_boundary\n"
-          + "Content-Type: application/soap+xml; charset=UTF-8\n"
+          + "--@@MIME_BOUNDARY@@\n"
+          + "Content-Type: @@XMLCTYPE@@; charset=UTF-8\n"
           + "Content-Transfer-Encoding: 8bit\n"
-          + "Content-ID: <rootpart@soapui.org>\n"
+          + "Content-ID: @@CONTENT_ID_1@@\n"
           + "\n"
           + "<S:Envelope xmlns:S='http://schemas.xmlsoap.org/soap/envelope/'>\n"
           + "  <S:Header>\n"
@@ -193,22 +223,22 @@ public class TestXopHandler {
           + "  </S:Body>\n"
           + "</S:Envelope>\n"
           + "\n"
-          + "--MIME_boundary\n"
+          + "--@@MIME_BOUNDARY@@\n"
           + "Content-Type: application/zip\n"
           + "Content-Transfer-Encoding: binary\n"
           + "Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>\n"
           + "\n"
           + "...binary zip data...\n"
           + "\n"
-          + "--MIME_boundary--\n"
+          + "--@@MIME_BOUNDARY@@--\n"
           + "\n";
 
   private static final String msg2 =
       ""
-          + "--MIME_boundary\n"
-          + "Content-Type: application/soap+xml; charset=UTF-8\n"
+          + "--@@MIME_BOUNDARY@@\n"
+          + "Content-Type: @@XMLCTYPE@@; charset=UTF-8\n"
           + "Content-Transfer-Encoding: 8bit\n"
-          + "Content-ID: <claim@insurance.com>\n"
+          + "Content-ID: @@CONTENT_ID_1@@\n"
           + "\n"
           + "<soap:Envelope\n"
           + " xmlns:soap='http://www.w3.org/2003/05/soap-envelope'\n"
@@ -223,58 +253,97 @@ public class TestXopHandler {
           + " </soap:Body>\n"
           + "</soap:Envelope>\n"
           + "\n"
-          + "--MIME_boundary\n"
+          + "--@@MIME_BOUNDARY@@\n"
           + "Content-Type: image/bmp\n"
           + "Content-Transfer-Encoding: binary\n"
           + "Content-ID: <image@insurance.com>\n"
           + "\n"
           + "...binary BMP image...\n"
           + "\n"
-          + "--MIME_boundary--\n"
+          + "--@@MIME_BOUNDARY@@--\n"
           + "\n";
 
   @Test
   public void parseMessage() throws Exception {
-    msgCtxt.setVariable("message.header.mime-version", "1.0");
-    msgCtxt.setVariable(
-        "message.header.content-type",
-        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<rootpart@soapui.org>'");
+    final String outerCtypeTemplate =
+        "Multipart/Related; "
+            + "boundary=@@MIME_BOUNDARY@@; "
+            + "type='@@START@@'; "
+            + "start='@@CONTENT_ID_1@@'";
 
-    msgCtxt.setVariable("message.content", msg1);
+    String[] innerXmlCtypes = {"soap", "xop"};
+    IntStream.range(0, innerXmlCtypes.length)
+        .forEach(
+            i -> {
+              final String xmlCtype =
+                  "application/@@CTYPE@@+xml".replaceAll("@@CTYPE@@", innerXmlCtypes[i]);
+              final String boundary = UUID.randomUUID().toString().replaceAll("-", "");
+              final String contentId1 = String.format("<%s>", UUID.randomUUID().toString());
 
-    Properties props = new Properties();
-    props.put("source", "message");
-    props.put("debug", "true");
+              msgCtxt.setVariable("message.header.mime-version", "1.0");
+              msgCtxt.setVariable(
+                  "message.header.content-type",
+                  outerCtypeTemplate
+                      .replaceAll("@@MIME_BOUNDARY@@", boundary)
+                      .replaceAll("@@START@@", contentId1)
+                      .replaceAll("@@XMLCTYPE@@", xmlCtype));
 
-    XopHandler callout = new XopHandler(props);
+              msgCtxt.setVariable(
+                  "message.content",
+                  msg1.replaceAll("@@MIME_BOUNDARY@@", boundary)
+                      .replaceAll("@@CONTENT_ID_1@@", contentId1)
+                      .replaceAll("@@XMLCTYPE@@", xmlCtype));
 
-    // execute and retrieve output
-    ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
-    ExecutionResult expectedResult = ExecutionResult.SUCCESS;
-    Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+              Properties props = new Properties();
+              props.put("source", "message");
+              props.put("debug", "true");
 
-    // check result and output
-    Object error = msgCtxt.getVariable("xop_error");
-    Assert.assertNull(error, "error");
+              XopHandler callout = new XopHandler(props);
 
-    Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
-    Assert.assertNull(stacktrace, "stacktrace");
+              // execute and retrieve output
+              ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+              ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+              Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
 
-    // cannot directly reference message.content with the mocked MessageContext
-    // Object output = msgCtxt.getVariable("message.content");
-    Message msg = msgCtxt.getMessage();
-    Object output = msg.getContent();
-    Assert.assertNotNull(output, "no output");
+              // check result and output
+              Object error = msgCtxt.getVariable("xop_error");
+              Assert.assertNull(error, "error");
+
+              Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+              Assert.assertNull(stacktrace, "stacktrace");
+
+              // cannot directly reference message.content with the mocked MessageContext
+              // Object output = msgCtxt.getVariable("message.content");
+              Message msg = msgCtxt.getMessage();
+              Object output = msg.getContent();
+              Assert.assertNotNull(output, "no output");
+            });
   }
 
   @Test
   public void withBogusAction() throws Exception {
+    final String outerCtypeTemplate =
+        "Multipart/Related; "
+            + "boundary=@@MIME_BOUNDARY@@; "
+            + "type='@@XMLCTYPE@@'; "
+            + "start='@@START@@'";
+
+    final String boundary = UUID.randomUUID().toString();
+    final String contentId1 = String.format("<%s>", UUID.randomUUID().toString());
+    final String xmlCtype = "application/soap+xml";
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
-        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<rootpart@soapui.org>'");
+        outerCtypeTemplate
+            .replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@START@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", xmlCtype));
 
-    msgCtxt.setVariable("message.content", msg1);
+    msgCtxt.setVariable(
+        "message.content",
+        msg1.replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@CONTENT_ID_1@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", xmlCtype));
 
     Properties props = new Properties();
     props.put("source", "message");
@@ -296,12 +365,27 @@ public class TestXopHandler {
 
   @Test
   public void withExtractAction() throws Exception {
+    final String outerCtypeTemplate =
+        "Multipart/Related; "
+            + "boundary=@@MIME_BOUNDARY@@; "
+            + "type='@@XMLCTYPE@@'; "
+            + "start='@@START@@'";
+
+    final String boundary = UUID.randomUUID().toString();
+    final String contentId1 = String.format("<%s>", UUID.randomUUID().toString());
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
-        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<rootpart@soapui.org>'");
+        outerCtypeTemplate
+            .replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@START@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", "application/soap+xml"));
 
-    msgCtxt.setVariable("message.content", msg1);
+    msgCtxt.setVariable(
+        "message.content",
+        msg1.replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@CONTENT_ID_1@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", "application/soap+xml"));
 
     Properties props = new Properties();
     props.put("source", "message");
@@ -330,12 +414,27 @@ public class TestXopHandler {
 
   @Test
   public void withEmbedAction() throws Exception {
+    final String outerCtypeTemplate =
+        "Multipart/Related; "
+            + "boundary=@@MIME_BOUNDARY@@; "
+            + "type='@@XMLCTYPE@@'; "
+            + "start='@@START@@'";
+
+    final String boundary = UUID.randomUUID().toString();
+    final String contentId1 = String.format("<%s>", UUID.randomUUID().toString());
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
-        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<rootpart@soapui.org>'");
+        outerCtypeTemplate
+            .replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@START@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", "application/soap+xml"));
 
-    msgCtxt.setVariable("message.content", msg1);
+    msgCtxt.setVariable(
+        "message.content",
+        msg1.replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@CONTENT_ID_1@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", "application/soap+xml"));
 
     Properties props = new Properties();
     props.put("source", "message");
@@ -362,19 +461,129 @@ public class TestXopHandler {
 
     System.out.printf("Result:\n%s\n", (String) output);
 
-    // String xml = new String(IOUtil.readAllBytes((InputStream)output), StandardCharsets.UTF_8);
+    Document xmlDoc = XmlUtils.parseXml((String) output);
+    Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
+  }
+
+  @Test
+  public void embedPdf() throws Exception {
+    final String outerCtypeTemplate =
+        "Multipart/Related; "
+            + "boundary=@@MIME_BOUNDARY@@; "
+            + "type='@@XMLCTYPE@@'; "
+            + "start='<@@START@@>'";
+
+    final String boundary = UUID.randomUUID().toString();
+    final String contentId1 = UUID.randomUUID().toString();
+    final String xmlCtype = "application/soap+xml";
+    msgCtxt.setVariable("message.header.mime-version", "1.0");
+    msgCtxt.setVariable(
+        "message.header.content-type",
+        outerCtypeTemplate
+            .replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@START@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", xmlCtype));
+
+    // assemble content
+    List<InputStream> streams = new ArrayList<InputStream>();
+    final String leaderTemplate =
+        ""
+            + "--@@MIME_BOUNDARY@@\n"
+            + "Content-Type: @@XMLCTYPE@@; charset=UTF-8\n"
+            + "Content-Transfer-Encoding: 8bit\n"
+            + "Content-ID: <@@CONTENT_ID_1@@>\n"
+            + "\n";
+    final String leader =
+        leaderTemplate
+            .replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@CONTENT_ID_1@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", xmlCtype);
+
+    streams.add(new ByteArrayInputStream(leader.getBytes(StandardCharsets.UTF_8)));
+    streams.add(fileInputStream("acord-example-pdf-attachment.xml"));
+
+    final String contentId2 = "b68d5d837c4a0f3d30c410@apache.org";
+    final String dividerTemplate =
+        ""
+            + "\n"
+            + "--@@MIME_BOUNDARY@@\n"
+            + "Content-Type: application/pdf\n"
+            + "Content-Transfer-Encoding: binary\n"
+            + "Content-ID: <@@CONTENT_ID_2@@>\n"
+            + "\n";
+    final String divider =
+        dividerTemplate
+            .replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@CONTENT_ID_2@@", contentId2);
+    streams.add(new ByteArrayInputStream(divider.getBytes(StandardCharsets.UTF_8)));
+    streams.add(fileInputStream("Apigee-API-Jam-Datasheet.pdf"));
+
+    final String trailerTemplate = "\n--@@MIME_BOUNDARY@@--\n";
+    final String trailer = trailerTemplate.replaceAll("@@MIME_BOUNDARY@@", boundary);
+    streams.add(new ByteArrayInputStream(trailer.getBytes(StandardCharsets.UTF_8)));
+
+    SequenceInputStream contentInputStream =
+        new SequenceInputStream(Collections.enumeration(streams));
+
+    // write this content to a file, just for diagnostics purposes
+    File contentFile = inputStreamToTempFile(contentInputStream);
+    System.out.printf("\n\nContent File for Input:\n%s\n", (String) contentFile.getAbsolutePath());
+
+    // now slurp up the file, to use for content
+    msgCtxt.getMessage().setContent(new FileInputStream(contentFile));
+
+    Properties props = new Properties();
+    props.put("source", "message");
+    props.put("action", "TRANSFORM_TO_EMBEDDED");
+    props.put("debug", "true");
+
+    XopHandler callout = new XopHandler(props);
+
+    // execute and retrieve output
+    ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+    ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+    Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+
+    // check result and output
+    Object error = msgCtxt.getVariable("xop_error");
+    Assert.assertNull(error, "error");
+
+    Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+    Assert.assertNull(stacktrace, "stacktrace");
+
+    Message msg = msgCtxt.getMessage();
+    Object output = msg.getContent();
+    Assert.assertNotNull(output, "no output");
+
+    System.out.printf("Result:\n%s\n", (String) output);
+
     Document xmlDoc = XmlUtils.parseXml((String) output);
     Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
   }
 
   @Test
   public void unacceptableContentType() throws Exception {
+    final String outerCtypeTemplate =
+        "Multipart/Related; "
+            + "boundary=@@MIME_BOUNDARY@@; "
+            + "type='@@XMLCTYPE@@'; "
+            + "start='@@START@@'";
+
+    final String boundary = UUID.randomUUID().toString();
+    final String contentId1 = "<claim@insurance.com>";
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
-        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<claim@insurance.com>'");
+        outerCtypeTemplate
+            .replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@START@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", "application/soap+xml"));
 
-    msgCtxt.setVariable("message.content", msg2);
+    msgCtxt.setVariable(
+        "message.content",
+        msg2.replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@CONTENT_ID_1@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", "application/soap+xml"));
 
     Properties props = new Properties();
     props.put("source", "message");
@@ -403,12 +612,27 @@ public class TestXopHandler {
 
   @Test
   public void acceptableContentType() throws Exception {
+    final String outerCtypeTemplate =
+        "Multipart/Related; "
+            + "boundary=@@MIME_BOUNDARY@@; "
+            + "type='@@XMLCTYPE@@'; "
+            + "start='@@START@@'";
+
+    final String boundary = UUID.randomUUID().toString();
+    final String contentId1 = "<claim@insurance.com>";
     msgCtxt.setVariable("message.header.mime-version", "1.0");
     msgCtxt.setVariable(
         "message.header.content-type",
-        "Multipart/Related; boundary=MIME_boundary; type='application/soap+xml'; start='<claim@insurance.com>'");
+        outerCtypeTemplate
+            .replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@START@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", "application/soap+xml"));
 
-    msgCtxt.setVariable("message.content", msg2);
+    msgCtxt.setVariable(
+        "message.content",
+        msg2.replaceAll("@@MIME_BOUNDARY@@", boundary)
+            .replaceAll("@@CONTENT_ID_1@@", contentId1)
+            .replaceAll("@@XMLCTYPE@@", "application/soap+xml"));
 
     Properties props = new Properties();
     props.put("source", "message");

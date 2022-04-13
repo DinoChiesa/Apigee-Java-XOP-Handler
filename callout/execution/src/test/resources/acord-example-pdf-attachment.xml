@@ -1,0 +1,34 @@
+<soapenv:Body
+    xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/'>
+<ns3:process
+xmlns:ns3="http://abc.com/"
+xmlns:ns2="http://ACORD.org/Standards/Life/2">
+<ns2:withMessg>
+<ns2:Life>
+<ns2:LifeRequest PrimaryObjectID="An7485">
+<ns2:SupportMultipleResponsesInd tc="1">True</ns2:SupportMultipleResponsesInd>
+<ns2:OLifE>
+<ns2:FormInstance id="FormInstance_477364">
+<ns2:FormName>Required Forms For Client Signature</ns2:FormName>
+<ns2:ProviderFormNumber>PDFmanifest</ns2:ProviderFormNumber>
+<ns2:Attachment id="xx4704">
+<ns2:DateCreated>2022-02-10</ns2:DateCreated>
+<ns2:AttachmentBasicType tc="3">File</ns2:AttachmentBasicType>
+<ns2:AttachmentData64Binary>
+<xop:Include href='cid:b68d5d837c4a0f3d30c410@apache.org'
+             xmlns:xop='http://www.w3.org/2004/08/xop/include'/>
+</ns2:AttachmentData64Binary>
+<ns2:AttachmentType tc="1">Document</ns2:AttachmentType>
+<ns2:MimeTypeTC tc="17">File/PDF</ns2:MimeTypeTC>
+<ns2:TransferEncodingTypeTC tc="4">Base 64</ns2:TransferEncodingTypeTC>
+<ns2:AttachmentLocation tc="5">XOP Include</ns2:AttachmentLocation>
+<ns2:AttachmentHashValue>abc</ns2:AttachmentHashValue>
+<ns2:AttachmentHashType tc="2">2</ns2:AttachmentHashType>
+</ns2:Attachment>
+</ns2:FormInstance>
+</ns2:OLifE>
+</ns2:LifeRequest>
+</ns2:Life>
+</ns2:withMessg>
+</ns3:process>
+</soapenv:Body>

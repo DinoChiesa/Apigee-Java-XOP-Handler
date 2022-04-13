@@ -46,22 +46,29 @@ if [[ ! "$ENDPOINT" == http* ]]; then
     exit 1
 fi
 
+TESTCASE=$2
+
+
 TARGET_URL_BASE="${ENDPOINT}/xop-handler"
 BOUNDARY=$(pseudo_uuid)
 PART1_CONTENT_ID=$(short_random_string 12)
 PART2_CONTENT_ID=$(pseudo_uuid)
 scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-a=( ${scriptdir}/*.zip )
-# Select a random zip file
+a=( ${scriptdir}/*.zip ${scriptdir}/*.pdf )
+# a=( ${scriptdir}/*.pdf )
+# Select a random file
 ATTACHMENT_FILENAME=( "${a[RANDOM%${#a[@]}]"{1..42}"}" )
 HREF_ID=$(pseudo_uuid)
 
 if [[ ! -f "$ATTACHMENT_FILENAME" ]]; then
-    printf "cannot find that file.\n"
+    printf "cannot find the randomly-selected file.\n"
     exit 1
 fi
 
 BASE_FILENAME=$(basename ${ATTACHMENT_FILENAME})
+
+printf "Selected content file: %s\n" ${BASE_FILENAME}
+
 
 # Prepare the headers for the XML request body
 read -r -d '' PART1_HEADERS << EOM
@@ -124,25 +131,40 @@ EOM
 # Create a temporary file
 REQUEST_BODY=$(mktemp)
 
-echo Using temporary file: ${REQUEST_BODY}
-echo
+printf "Using temporary file: %s\n" ${REQUEST_BODY}
 
 # Stitch the request body together by concatenating all parts in the right order.
-echo "$PART1_HEADERS" >> ${REQUEST_BODY}
+printf -- "$PART1_HEADERS"      >> ${REQUEST_BODY}
 # We use ANSI-C quoting for enforcing newlines: https://stackoverflow.com/a/5295906/1523342
-echo $'\r\n\r\n'            >> ${REQUEST_BODY}
-echo "$XML_REQUEST"         >> ${REQUEST_BODY}
-echo $'\r\n'                >> ${REQUEST_BODY}
-echo "$PART2_HEADERS"       >> ${REQUEST_BODY}
-echo $'\r\n\r\n'            >> ${REQUEST_BODY}
-cat ${ATTACHMENT_FILENAME}  >> ${REQUEST_BODY}
-echo $MIME_TERMINATOR       >> ${REQUEST_BODY}
+printf $'\n\n'               >> ${REQUEST_BODY}
+printf "$XML_REQUEST"        >> ${REQUEST_BODY}
+printf $'\n\n'               >> ${REQUEST_BODY}
+printf -- "$PART2_HEADERS"   >> ${REQUEST_BODY}
+printf $'\n\n'               >> ${REQUEST_BODY}
+cat ${ATTACHMENT_FILENAME}   >> ${REQUEST_BODY}
+printf $'\n'                 >> ${REQUEST_BODY}
+printf -- "$MIME_TERMINATOR" >> ${REQUEST_BODY}
+printf $'\n'                 >> ${REQUEST_BODY}
 
 # Finally, upload the request body
 # Based on & inspired by: https://stackoverflow.com/a/45289969/1523342
-for (( N=1; N < 5; ++N ))
-do
-  URL=${TARGET_URL_BASE}/t${N}
+if [[ "$TESTCASE" == "" ]]; then
+    for (( N=1; N < 5; ++N ))
+    do
+      URL=${TARGET_URL_BASE}/t${N}
+      printf "********\n******** Testcase $N\n${URL}\n"
+      read -p "ENTER to continue... " dummy
+
+      curl -i ${URL} \
+          -H "Content-Type: multipart/related; start=\"${PART1_CONTENT_ID}\"; boundary=\"${BOUNDARY}\"" \
+          -H "MIME-Version: 1.0" \
+          -H "SOAPAction: ${SOAPAction}" \
+          --data-binary @${REQUEST_BODY}
+
+    done
+else
+
+  URL=${TARGET_URL_BASE}/t${TESTCASE}
   printf "\n********\n******** Testcase $N\n${URL}\n"
   read -p "ENTER to continue... " dummy
 
@@ -150,9 +172,8 @@ do
       -H "Content-Type: multipart/related; start=\"${PART1_CONTENT_ID}\"; boundary=\"${BOUNDARY}\"" \
       -H "MIME-Version: 1.0" \
       -H "SOAPAction: ${SOAPAction}" \
-      --data-binary @${REQUEST_BODY} \
-
-done
+      --data-binary @${REQUEST_BODY}
+fi
 
 # Remove the temporary file.
 rm ${REQUEST_BODY}

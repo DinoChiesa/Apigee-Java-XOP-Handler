@@ -1,4 +1,6 @@
 <XMLToJSON name='XMLToJSON-1'>
   <Source>request</Source>
-  <Options/>
+  <Options>
+    <TextNodeName>#text</TextNodeName>
+  </Options>
 </XMLToJSON>

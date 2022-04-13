@@ -1,14 +1,25 @@
 ## Tool for exercising the example proxy
 
-The tool contained in this directory
-You need to have dpeloyed the example proxy in order to use this tool. 
+The script contained in this directory will:
+- create a multipart/related HTTP message with soap+xml and a xop:Include
+- embed a zip file or a pdf file as the 2nd part of the document
+- invoke the xop-handler endpoint with that multipart/related message
 
-Usage: 
+This replicates what you can do with SOAP-UI as far as attachments.
 
+You need to have deployed the example proxy bundle in order to use this tool.
+
+### Usage:
+
+To run all test cases:
 ```
-./soap-mtom-xop.sh 
+endpoint=https://my-apigee-endpoint
+./create-and-send-soap-mtom-xop-request.sh $endpoint
 ```
 
-This should simulate what you can do with SOAP-UI as far as attachments.
-
+To run all one test case:
+```
+endpoint=https://my-apigee-endpoint
+./create-and-send-soap-mtom-xop-request.sh $endpoint 3
+```
 

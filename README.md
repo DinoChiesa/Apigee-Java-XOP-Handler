@@ -33,7 +33,7 @@ configuration for the policy.
 If you want to build it, the instructions are at the bottom of this readme.
 
 1. copy the callout jar file, available in
-   `target/apigee-custom-xop-handler-20210713.jar`, and its dependency
+   `target/apigee-custom-xop-handler-20220413.jar`, and its dependency
    `multipart-handler-\*.jar`, to your apiproxy/resources/java directory. You can
    do this offline, or using the graphical Proxy Editor in the Apigee
    Admin UI.
@@ -48,7 +48,7 @@ If you want to build it, the instructions are at the bottom of this readme.
        <Property name="action">edit_1</Property>
      </Properties>
      <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-     <ResourceURL>java://apigee-custom-xop-handler-20210713.jar</ResourceURL>
+     <ResourceURL>java://apigee-custom-xop-handler-20220413.jar</ResourceURL>
    </JavaCallout>
    ```
 
@@ -128,7 +128,16 @@ Content-ID: <0b83cd6b-af15-45d2-bbda-23895de2a73d>
 --MIME_boundary--
 ```
 
-The attachment doesn't have to be a zip.
+That is:
+- the content-type of the entire message should
+  - indicate "multipart/related",
+  - optionally may have a type of "application/xop+xml" or "application/soap+xml"
+  - should specify a boundary string
+  - shouldl specify a 'start' value.
+  - example: `content-type: multipart/related; type="application/xop+xml"; boundary="uuid:170e63fa-183c-4b18-9364-c62ca545a6e0"; start="<root.message@cxf.apache.org>";`
+- there are two parts following that, each separated by the MIME boundary marker
+- The first part should have an additional content-type header with value `application/soap+xml` or `application/xop+xml`
+- the second part should have a different content-type. It may be `application/zip` `application/pdf` or similar.
 
 ## Callout Configuration
 
@@ -143,7 +152,7 @@ The configuration for the callout accepts various properties which affects the c
     <!-- ...more here... -->
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20210713.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20220413.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -243,7 +252,7 @@ Building from source requires Java 1.8, and Maven.
 
 ## License
 
-This material is Copyright 2018-2021 Google LLC and is licensed under the
+This material is Copyright 2018-2022 Google LLC and is licensed under the
 [Apache 2.0 License](LICENSE). This includes the Java code as well as the API
 Proxy configuration.
 

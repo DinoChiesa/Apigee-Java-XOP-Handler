@@ -1,5 +1,6 @@
-<soapenv:Body
+<soapenv:Envelope
     xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/'>
+<soapenv:Body>
 <ns3:process
 xmlns:ns3="http://abc.com/"
 xmlns:ns2="http://ACORD.org/Standards/Life/2">
@@ -15,7 +16,7 @@ xmlns:ns2="http://ACORD.org/Standards/Life/2">
 <ns2:DateCreated>2022-02-10</ns2:DateCreated>
 <ns2:AttachmentBasicType tc="3">File</ns2:AttachmentBasicType>
 <ns2:AttachmentData64Binary>
-<xop:Include href='cid:b68d5d837c4a0f3d30c410@apache.org'
+<xop:Include href='cid:@@CONTENT_ID@@'
              xmlns:xop='http://www.w3.org/2004/08/xop/include'/>
 </ns2:AttachmentData64Binary>
 <ns2:AttachmentType tc="1">Document</ns2:AttachmentType>
@@ -32,3 +33,4 @@ xmlns:ns2="http://ACORD.org/Standards/Life/2">
 </ns2:withMessg>
 </ns3:process>
 </soapenv:Body>
+</soapenv:Envelope>

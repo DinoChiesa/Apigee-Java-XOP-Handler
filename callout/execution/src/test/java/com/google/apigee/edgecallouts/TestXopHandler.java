@@ -20,8 +20,10 @@ import com.apigee.flow.execution.ExecutionContext;
 import com.apigee.flow.execution.ExecutionResult;
 import com.apigee.flow.message.Message;
 import com.apigee.flow.message.MessageContext;
+import com.google.apigee.IOUtil;
 import com.google.apigee.xml.XmlUtils;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -29,24 +31,28 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.SequenceInputStream;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import mockit.Mock;
 import mockit.MockUp;
-import org.apache.commons.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 
 public class TestXopHandler {
   private static final String testDataDir = "src/test/resources";
@@ -61,8 +67,8 @@ public class TestXopHandler {
     return "-null-";
   }
 
-  private static InputStream fileInputStream(String relativeFilename) throws IOException {
-    return new FileInputStream(Paths.get(testDataDir, relativeFilename).toFile());
+  private static InputStream fileInputStream(String relativeFileName) throws IOException {
+    return new FileInputStream(Paths.get(testDataDir, relativeFileName).toFile());
   }
 
   private static File inputStreamToTempFile(InputStream in) throws IOException {
@@ -78,6 +84,26 @@ public class TestXopHandler {
 
     return file;
   }
+
+  private static String sha256(InputStream is) throws IOException, NoSuchAlgorithmException {
+    MessageDigest md = MessageDigest.getInstance("SHA-256");
+    try (DigestInputStream dis = new DigestInputStream(is, md)) {
+      byte[] buf = new byte[0x1000];
+      while (true) {
+        int r = dis.read(buf);
+        if (r == -1) {
+          break;
+        }
+      }
+    }
+    return toHexString(md.digest());
+  }
+
+private static String toHexString(byte[] bytes) {
+    return IntStream.range(0, bytes.length)
+    .mapToObj(i -> String.format("%02X", bytes[i]))
+    .collect(Collectors.joining());
+}
 
   @BeforeMethod()
   public void beforeMethod() {
@@ -168,10 +194,9 @@ public class TestXopHandler {
           @Mock()
           public String getContent() {
             // System.out.printf("\n** getContent()\n");
-            try {
-              StringWriter writer = new StringWriter();
-              IOUtils.copy(messageContentStream, writer, StandardCharsets.UTF_8);
-              return writer.toString();
+            try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+              IOUtil.copy(messageContentStream, os);
+              return new String(os.toByteArray(), StandardCharsets.UTF_8);
             } catch (Exception ex1) {
               return null;
             }
@@ -500,22 +525,32 @@ public class TestXopHandler {
             .replaceAll("@@XMLCTYPE@@", xmlCtype);
 
     streams.add(new ByteArrayInputStream(leader.getBytes(StandardCharsets.UTF_8)));
-    streams.add(fileInputStream("acord-example-pdf-attachment.xml"));
+    final String contentId2 = UUID.randomUUID().toString();
+    String xmlContent =
+        new String(
+            IOUtil.readAllBytes(fileInputStream("acord-example-pdf-attachment.xml")),
+            StandardCharsets.UTF_8);
 
-    final String contentId2 = "b68d5d837c4a0f3d30c410@apache.org";
+    streams.add(
+        new ByteArrayInputStream(
+            xmlContent.replaceAll("@@CONTENT_ID@@", contentId2).getBytes(StandardCharsets.UTF_8)));
+
     final String dividerTemplate =
-        ""
-            + "\n"
+      "\n"
             + "--@@MIME_BOUNDARY@@\n"
             + "Content-Type: application/pdf\n"
             + "Content-Transfer-Encoding: binary\n"
             + "Content-ID: <@@CONTENT_ID_2@@>\n"
             + "\n";
+
     final String divider =
         dividerTemplate
             .replaceAll("@@MIME_BOUNDARY@@", boundary)
             .replaceAll("@@CONTENT_ID_2@@", contentId2);
     streams.add(new ByteArrayInputStream(divider.getBytes(StandardCharsets.UTF_8)));
+
+    String sha256_before = sha256(fileInputStream("Apigee-API-Jam-Datasheet.pdf"));
+
     streams.add(fileInputStream("Apigee-API-Jam-Datasheet.pdf"));
 
     final String trailerTemplate = "\n--@@MIME_BOUNDARY@@--\n";
@@ -552,13 +587,24 @@ public class TestXopHandler {
     Assert.assertNull(stacktrace, "stacktrace");
 
     Message msg = msgCtxt.getMessage();
-    Object output = msg.getContent();
+    String output = (String) msg.getContent();
     Assert.assertNotNull(output, "no output");
 
-    System.out.printf("Result:\n%s\n", (String) output);
+    System.out.printf("Result:\n%s\n", output);
 
-    Document xmlDoc = XmlUtils.parseXml((String) output);
+    Document xmlDoc = XmlUtils.parseXml(output);
     Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
+
+    // compare the before and after content
+    NodeList nl = xmlDoc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
+    Assert.assertEquals(nl.getLength(), 1, "AttachmentData64Binary element");
+
+    String base64String = nl.item(0).getTextContent();
+
+    byte[] decodedContent = Base64.getDecoder().decode(base64String.getBytes(StandardCharsets.UTF_8));
+    String sha256_after = sha256(new ByteArrayInputStream(decodedContent));
+    Assert.assertEquals(sha256_before, sha256_after);
+
   }
 
   @Test

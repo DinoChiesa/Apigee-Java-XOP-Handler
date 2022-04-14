@@ -1,7 +1,8 @@
 # Apigee XOP Handler
 
 This directory contains the Java source code and pom.xml file required to build
-a Java callout that reads a multipart/related payload with a
+a Java callout that reads a multipart/related payload as described in
+[IETF RFC 2387](https://datatracker.ietf.org/doc/html/rfc2387) with a
 [XOP](https://www.w3.org/TR/xop10/#xop_include) message payload.
 
 The callout can do one of three things with that payload:

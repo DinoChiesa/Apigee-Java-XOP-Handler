@@ -1,4 +1,34 @@
 #!/bin/bash
+#
+# create-and-send-soap-mtom-xop-request.sh
+#
+# This tool creates a multipart/related message (See IETF RFC 2387) that
+# includes a SOAP message as the first part, and a binary stream as the second
+# part. The SOAP message uses MTOM and XOP to refer to the second part. The tool
+# then sends that message via curl to a specific endpoint.
+#
+# usage:
+#   endpoint=https://my-apigee-endpoint.com
+#   create-and-send-soap-mtom-xop-request.sh $endpoint
+#
+# The tool works by randomly selecting a PDF or ZIP file from the current
+# directory, and using that for the content for the Included data. The SOAP
+# message always uses Content-Type: application/soap+xml; charset=UTF-8, and the
+# binary data always uses Content-Type: application/octet-stream.
+#
+# This tool assumes the example API proxy bundle for demonstrating the XOP
+# handler is already deployed and available at $endpoint/xop-handler .
+#
+# It sends the same message to the proxy 4 times, once for each
+# conditional flow. This allows you to exercise all the paths into the proxy,
+# which then uses different configurations for the xop-handler callout.
+#
+# If you want to exercise only a specific flow, for example #3 which performs
+# the transform_to_embedded action, then append that number to the command line:
+#
+#   create-and-send-soap-mtom-xop-request.sh $endpoint 3
+#
+
 
 short_random_string() {
     printf $(hexdump -n $1 -e '8/8 "%08X"' /dev/random  | tr -d '[:space:]')
@@ -129,51 +159,46 @@ read -r -d '' MIME_TERMINATOR << EOM
 EOM
 
 # Create a temporary file
-REQUEST_BODY=$(mktemp)
+REQUEST_BODY_FILE=$(mktemp)
 
-printf "Using temporary file: %s\n" ${REQUEST_BODY}
+printf "Using temporary file: %s\n" ${REQUEST_BODY_FILE}
 
 # Stitch the request body together by concatenating all parts in the right order.
-printf -- "$PART1_HEADERS"      >> ${REQUEST_BODY}
+printf -- "$PART1_HEADERS"      >> ${REQUEST_BODY_FILE}
 # We use ANSI-C quoting for enforcing newlines: https://stackoverflow.com/a/5295906/1523342
-printf $'\n\n'               >> ${REQUEST_BODY}
-printf "$XML_REQUEST"        >> ${REQUEST_BODY}
-printf $'\n\n'               >> ${REQUEST_BODY}
-printf -- "$PART2_HEADERS"   >> ${REQUEST_BODY}
-printf $'\n\n'               >> ${REQUEST_BODY}
-cat ${ATTACHMENT_FILENAME}   >> ${REQUEST_BODY}
-printf $'\n'                 >> ${REQUEST_BODY}
-printf -- "$MIME_TERMINATOR" >> ${REQUEST_BODY}
-printf $'\n'                 >> ${REQUEST_BODY}
+printf $'\n\n'               >> ${REQUEST_BODY_FILE}
+printf "$XML_REQUEST"        >> ${REQUEST_BODY_FILE}
+printf $'\n\n'               >> ${REQUEST_BODY_FILE}
+printf -- "$PART2_HEADERS"   >> ${REQUEST_BODY_FILE}
+printf $'\n\n'               >> ${REQUEST_BODY_FILE}
+cat ${ATTACHMENT_FILENAME}   >> ${REQUEST_BODY_FILE}
+printf $'\n'                 >> ${REQUEST_BODY_FILE}
+printf -- "$MIME_TERMINATOR" >> ${REQUEST_BODY_FILE}
+printf $'\n'                 >> ${REQUEST_BODY_FILE}
 
 # Finally, upload the request body
-# Based on & inspired by: https://stackoverflow.com/a/45289969/1523342
-if [[ "$TESTCASE" == "" ]]; then
-    for (( N=1; N < 5; ++N ))
-    do
-      URL=${TARGET_URL_BASE}/t${N}
-      printf "********\n******** Testcase $N\n${URL}\n"
-      read -p "ENTER to continue... " dummy
+send_one() {
+    local N=$1
+    local dummy
+    local URL=${TARGET_URL_BASE}/t${N}
+    printf "********\n******** Testcase $N\n${URL}\n"
+    read -p "ENTER to continue... " dummy
 
-      curl -i ${URL} \
+    curl -i ${URL} \
           -H "Content-Type: multipart/related; start=\"${PART1_CONTENT_ID}\"; boundary=\"${BOUNDARY}\"" \
           -H "MIME-Version: 1.0" \
           -H "SOAPAction: ${SOAPAction}" \
-          --data-binary @${REQUEST_BODY}
+          --data-binary @${REQUEST_BODY_FILE}
+}
 
-    done
+if [[ "$TESTCASE" == "" ]]; then
+  for (( N=1; N < 5; ++N ))
+  do
+    send_one $N
+  done
 else
-
-  URL=${TARGET_URL_BASE}/t${TESTCASE}
-  printf "\n********\n******** Testcase $N\n${URL}\n"
-  read -p "ENTER to continue... " dummy
-
-  curl -i ${URL} \
-      -H "Content-Type: multipart/related; start=\"${PART1_CONTENT_ID}\"; boundary=\"${BOUNDARY}\"" \
-      -H "MIME-Version: 1.0" \
-      -H "SOAPAction: ${SOAPAction}" \
-      --data-binary @${REQUEST_BODY}
+  send_one ${TESTCASE}
 fi
 
 # Remove the temporary file.
-rm ${REQUEST_BODY}
+rm ${REQUEST_BODY_FILE}

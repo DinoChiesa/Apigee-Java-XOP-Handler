@@ -1,0 +1,77 @@
+Content-Type: multipart/related; type="application/xop+xml"; start="<http://tempuri.org/0/>"; start-info="text/xml"; boundary="8997b0ab-852a-406f-bc43-a8b48321efa5+id=20"
+
+
+--8997b0ab-852a-406f-bc43-a8b48321efa5+id=20
+Content-Type: application/xop+xml; charset=utf-8; type="text/xml"
+Content-Transfer-Encoding: binary
+Content-ID: <http://tempuri.org/0/>
+
+<soapenv:Envelope xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/'>
+<soapenv:Body>
+<ns3:process
+xmlns:ns3="http://abc.com/"
+xmlns:ns2="http://ACORD.org/Standards/Life/2">
+<ns2:withMessg>
+<ns2:Life>
+<ns2:LifeRequest PrimaryObjectID="An7485">
+<ns2:SupportMultipleResponsesInd tc="1">True</ns2:SupportMultipleResponsesInd>
+<ns2:OLifE>
+<ns2:FormInstance id="FormInstance_477364">
+<ns2:FormName>Required Forms For Client Signature</ns2:FormName>
+<ns2:ProviderFormNumber>PDFmanifest</ns2:ProviderFormNumber>
+<ns2:Attachment id="xx4704">
+<ns2:DateCreated>2022-02-10</ns2:DateCreated>
+<ns2:AttachmentBasicType tc="3">File</ns2:AttachmentBasicType>
+<ns2:AttachmentData64Binary>
+<xop:Include href='cid:5d31ab1f59579aad895dc7a32d310@apache.org'
+xmlns:xop='http://www.w3.org/2004/08/xop/include'/>
+</ns2:AttachmentData64Binary>
+<ns2:AttachmentType tc="1">Document</ns2:AttachmentType>
+<ns2:MimeTypeTC tc="17">File/PDF</ns2:MimeTypeTC>
+<ns2:TransferEncodingTypeTC tc="4">Base 64</ns2:TransferEncodingTypeTC>
+<ns2:AttachmentLocation tc="5">XOP Include</ns2:AttachmentLocation>
+<ns2:AttachmentHashValue>abc</ns2:AttachmentHashValue>
+<ns2:AttachmentHashType tc="2">2</ns2:AttachmentHashType>
+</ns2:Attachment>
+<ns2:Attachment id="xx4705">
+<ns2:DateCreated>2022-02-10</ns2:DateCreated>
+<ns2:AttachmentBasicType tc="3">File</ns2:AttachmentBasicType>
+<ns2:AttachmentData64Binary>
+<xop:Include href='cid:5d314343570@apache.org'
+xmlns:xop='http://www.w3.org/2004/08/xop/include'/>
+</ns2:AttachmentData64Binary>
+<ns2:AttachmentType tc="1">Document</ns2:AttachmentType>
+<ns2:MimeTypeTC tc="17">File/PDF</ns2:MimeTypeTC>
+<ns2:TransferEncodingTypeTC tc="4">Base 64</ns2:TransferEncodingTypeTC>
+<ns2:AttachmentLocation tc="5">XOP Include</ns2:AttachmentLocation>
+<ns2:AttachmentHashValue>abc</ns2:AttachmentHashValue>
+<ns2:AttachmentHashType tc="2">2</ns2:AttachmentHashType>
+</ns2:Attachment>
+</ns2:FormInstance>
+</ns2:OLifE>
+</ns2:LifeRequest>
+</ns2:Life>
+</ns2:withMessg>
+</ns3:process>
+</soapenv:Body>
+</soapenv:Envelope>
+
+--8997b0ab-852a-406f-bc43-a8b48321efa5+id=20
+Content-Type: application/pdf
+Content-Transfer-Encoding: binary
+Content-ID:
+<5d31ab1f59579aad895dc7a32d310@apache.org>
+
+%PDF-1.7 %���� 1 0 obj <
+</Type/Catalog/Pages 2 0 R/Lang(en-US) /StructTreeRoot 10 0 R/MarkInfo<
+</Marked true>>/Metadata 20 0 R/ViewerPreferences 21 0 R>> endobj 2 0 obj <
+</Type/Pages/Count 1/Kids[ 3 0 R] >> endobj 3 0 obj <undefined</Type/Page/Parent 2 0 R/Resources<undefined</Font<undefined</F1 5 0 R>>/ExtGState<undefined</GS7 7 0 R/GS8 8 0 R>>/ProcSet[/PDF/Text/ImageB/ImageC/ImageI] yt׮;��~|�7����Z�����_9}6D�q�n�������o�mm��n�}p��m.�kx��A��@��O8�I����Y��|7;q�{˥V��ݯ��5C����?�B�:�����KYL^M]�3޾վ>������pyD�Ũ���|Vs1i��5帨I�I5Eo��&N?�+�ڇ�O���"��_�XB%frS}4��Ц����C���[�{���ϒ�a�- �� endstream endobj 20 0 obj <undefined</Type/Metadata/Subtype/XML/Length 3088>> stream undefined<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>undefined<x:xmpmetaundefinedxmlns:x="adobe:ns:meta/" x:xmptk="3.1-701">undefined<rdf:RDFundefinedxmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">undefined<rdf:Description rdf:about=""undefinedxmlns:pdf="http://ns.adobe.com/pdf/1.3/">undefined<pdf:Producer>Microsoft® Word for Microsoft 365</pdf:Producer>undefined</rdf:Description>undefined<rdf:Description rdf:about="" x %%EOF
+
+--8997b0ab-852a-406f-bc43-a8b48321efa5+id=20
+Content-Type: application/pdf
+Content-Transfer-Encoding: binary
+Content-ID: undefined<5d314343570@apache.org>
+
+%PDF-1.7 %���� 1 0 obj <undefined</Type/Catalog/Pages 2 0 R/Lang(en-US) /StructTreeRoot 10 0 R/MarkInfo<undefined</Marked true>>/Metadata 20 0 R/ViewerPreferences 21 0 R>> endobj 2 0 obj <undefined</Type/Pages/Count 1/Kids[ 3 0 R] >> endobj 3 0 obj <undefined</Type/Page/Parent 2 0 R/Resources<undefined</Font<undefined</F1 5 0 R>>/ExtGState<undefined</GS7 7 0 R/GS8 8 0 R>>/ProcSet[/PDF/Text/ImageB/ImageC/ImageI] yt׮;��~|�7����Z�����_9}6D�q�n�������o�mm��n�}p��m.�kx��A��@��O8�I����Y��|7;q�{˥V��ݯ��5C����?�B�:�����KYL^M]�3޾վ>������pyD�Ũ���|Vs1i��5帨I�I5Eo��&N?�+�ڇ�O���"��_�XB%frS}4��Ц����C���[�{���ϒ�a�- �� endstream endobj 20 0 obj <undefined</Type/Metadata/Subtype/XML/Length 3088>> stream undefined<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>undefined<x:xmpmetaundefinedxmlns:x="adobe:ns:meta/" x:xmptk="3.1-701">undefined<rdf:RDFundefinedxmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">undefined<rdf:Description rdf:about=""undefinedxmlns:pdf="http://ns.adobe.com/pdf/1.3/">undefined<pdf:Producer>Microsoft® Word for Microsoft 365</pdf:Producer>undefined</rdf:Description>undefined<rdf:Description rdf:about="" x %%EOF
+
+--8997b0ab-852a-406f-bc43-a8b48321efa5+id=20--

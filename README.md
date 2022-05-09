@@ -34,7 +34,7 @@ configuration for the policy.
 If you want to build it, the instructions are at the bottom of this readme.
 
 1. copy the callout jar file, available in
-   `target/apigee-custom-xop-handler-20220413.jar`, and its dependency
+   `target/apigee-custom-xop-handler-20220509.jar`, and its dependency
    `multipart-handler-\*.jar`, to your apiproxy/resources/java directory. You can
    do this offline, or using the graphical Proxy Editor in the Apigee
    Admin UI.
@@ -49,7 +49,7 @@ If you want to build it, the instructions are at the bottom of this readme.
        <Property name="action">edit_1</Property>
      </Properties>
      <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-     <ResourceURL>java://apigee-custom-xop-handler-20220413.jar</ResourceURL>
+     <ResourceURL>java://apigee-custom-xop-handler-20220509.jar</ResourceURL>
    </JavaCallout>
    ```
 
@@ -153,7 +153,7 @@ The configuration for the callout accepts various properties which affects the c
     <!-- ...more here... -->
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20220413.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20220509.jar</ResourceURL>
 </JavaCallout>
 ```
 

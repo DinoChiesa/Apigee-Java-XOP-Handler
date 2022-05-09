@@ -22,6 +22,7 @@ import com.apigee.flow.message.Message;
 import com.apigee.flow.message.MessageContext;
 import com.google.apigee.IOUtil;
 import com.google.apigee.xml.XmlUtils;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -29,6 +30,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.SequenceInputStream;
 import java.nio.charset.StandardCharsets;
@@ -44,6 +46,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import mockit.Mock;
@@ -52,6 +56,8 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 public class TestXopHandler {
@@ -61,6 +67,7 @@ public class TestXopHandler {
   InputStream messageContentStream;
   Message message;
   ExecutionContext exeCtxt;
+  final boolean verbose = false;
 
   private static String stringify(Object value) {
     if (value != null) return value.toString();
@@ -99,11 +106,11 @@ public class TestXopHandler {
     return toHexString(md.digest());
   }
 
-private static String toHexString(byte[] bytes) {
+  private static String toHexString(byte[] bytes) {
     return IntStream.range(0, bytes.length)
-    .mapToObj(i -> String.format("%02X", bytes[i]))
-    .collect(Collectors.joining());
-}
+        .mapToObj(i -> String.format("%02X", bytes[i]))
+        .collect(Collectors.joining());
+  }
 
   @BeforeMethod()
   public void beforeMethod() {
@@ -124,7 +131,9 @@ private static String toHexString(byte[] bytes) {
             if (name.equals("message")) {
               return (T) message;
             }
-            System.out.printf("getVariable(%s) = %s\n", name, stringify(variables.get(name)));
+            if (verbose) {
+              System.out.printf("getVariable(%s) = %s\n", name, stringify(variables.get(name)));
+            }
             return (T) variables.get(name);
           }
 
@@ -141,7 +150,9 @@ private static String toHexString(byte[] bytes) {
                 messageContentStream = (InputStream) value;
               }
             }
-            System.out.printf("setVariable(%s) <= %s\n", name, value.toString());
+            if (verbose) {
+              System.out.printf("setVariable(%s) <= %s\n", name, value.toString());
+            }
             variables.put(name, value);
             return true;
           }
@@ -174,7 +185,9 @@ private static String toHexString(byte[] bytes) {
 
           @Mock()
           public String getHeader(String name) {
-            System.out.printf("\ngetHeader(%s)\n", name);
+            if (verbose) {
+              System.out.printf("\ngetHeader(%s)\n", name);
+            }
             return (String) msgCtxt.getVariable("message.header." + name.toLowerCase());
           }
 
@@ -536,7 +549,7 @@ private static String toHexString(byte[] bytes) {
             xmlContent.replaceAll("@@CONTENT_ID@@", contentId2).getBytes(StandardCharsets.UTF_8)));
 
     final String dividerTemplate =
-      "\n"
+        "\n"
             + "--@@MIME_BOUNDARY@@\n"
             + "Content-Type: application/pdf\n"
             + "Content-Transfer-Encoding: binary\n"
@@ -596,15 +609,17 @@ private static String toHexString(byte[] bytes) {
     Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
 
     // compare the before and after content
-    NodeList nl = xmlDoc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
+    NodeList nl =
+        xmlDoc.getElementsByTagNameNS(
+            "http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
     Assert.assertEquals(nl.getLength(), 1, "AttachmentData64Binary element");
 
     String base64String = nl.item(0).getTextContent();
 
-    byte[] decodedContent = Base64.getDecoder().decode(base64String.getBytes(StandardCharsets.UTF_8));
+    byte[] decodedContent =
+        Base64.getDecoder().decode(base64String.getBytes(StandardCharsets.UTF_8));
     String sha256_after = sha256(new ByteArrayInputStream(decodedContent));
     Assert.assertEquals(sha256_before, sha256_after);
-
   }
 
   @Test
@@ -682,7 +697,7 @@ private static String toHexString(byte[] bytes) {
 
     Properties props = new Properties();
     props.put("source", "message");
-    props.put("part2-ctypes", "image.jpeg, image/bmp");
+    props.put("part2-ctypes", "image/jpeg, image/bmp");
     props.put("debug", "true");
 
     XopHandler callout = new XopHandler(props);
@@ -698,5 +713,65 @@ private static String toHexString(byte[] bytes) {
 
     Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
     Assert.assertNull(stacktrace, "stacktrace");
+  }
+
+  @Test
+  public void multipleAttachments() throws Exception {
+    final String relativeFileName = "acord-example-multiple-pdf.bin";
+
+    try (InputStream input =
+            new FileInputStream(Paths.get(testDataDir, relativeFileName).toFile());
+        InputStreamReader charReader = new InputStreamReader(input);
+        BufferedReader reader = new BufferedReader(charReader)) {
+      String headerLine = reader.readLine().trim();
+
+      Pattern contentTypeHeaderPattern = Pattern.compile("(?i)^content-type *: *(.+)$");
+      Matcher m = contentTypeHeaderPattern.matcher(headerLine);
+      if (!m.matches()) {
+        throw new IllegalStateException("unexpected content-id header in test input");
+      }
+      msgCtxt.setVariable("message.header.content-type", m.group(1).trim());
+      msgCtxt.setVariable("message.header.mime-version", "1.0");
+      msgCtxt.setVariable(
+          "message.content",
+          reader.lines().collect(Collectors.joining(System.lineSeparator())).trim());
+
+      Properties props = new Properties();
+      props.put("source", "message");
+      props.put("action", "TRANSFORM_TO_EMBEDDED");
+      // props.put("debug", "true");
+
+      XopHandler callout = new XopHandler(props);
+
+      // execute and retrieve output
+      ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+      ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+      Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+
+      // check result and output
+      Object error = msgCtxt.getVariable("xop_error");
+      Assert.assertNull(error, "error");
+
+      Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+      Assert.assertNull(stacktrace, "stacktrace");
+      Message msg = msgCtxt.getMessage();
+      String output = msg.getContent();
+      Assert.assertNotNull(output, "no output");
+      //System.out.printf("%s\n", output);
+      Document doc = XmlUtils.parseXml(output);
+      NodeList nl = doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
+      Assert.assertEquals(nl.getLength(), 0, "Include elements");
+
+      nl = doc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
+      Assert.assertEquals(nl.getLength(), 2, "Attachment elements");
+
+      for (int ix = 0; ix < nl.getLength(); ix++) {
+        Element attachmentElt = (Element) nl.item(ix);
+        NodeList children = attachmentElt.getChildNodes();
+        Assert.assertEquals(children.getLength(), 1, "Attachment elements");
+        Node child = children.item(0);
+        Assert.assertEquals(Node.TEXT_NODE, child.getNodeType(), "Child node");
+      }
+    }
   }
 }

@@ -37,9 +37,12 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.xml.xpath.XPathConstants;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -49,9 +52,16 @@ public class XopHandler extends CalloutBase implements Execution {
   private static final XopAction DEFAULT_ACTION = XopAction.EDIT_1;
   private static final Base64.Encoder b64Encoder = Base64.getEncoder();
   private static final List<String> DEFAULT_PART1_CTYPES =
-    Arrays.asList("application/soap+xml", "application/xop+xml", "text/xml");
+      Arrays.asList("application/soap+xml", "application/xop+xml", "text/xml");
   private static final List<String> DEFAULT_PART2_CTYPES =
-    Arrays.asList("application/zip","application/octet-stream","image/jpeg","image/png","application/pdf");
+      Arrays.asList(
+          "application/zip",
+          "application/octet-stream",
+          "image/jpeg",
+          "image/png",
+          "application/pdf");
+
+  private static final Pattern contentIdPattern = Pattern.compile("^.*<([^>]+)>$");
 
   public XopHandler(Map properties) {
     super(properties);
@@ -103,19 +113,17 @@ public class XopHandler extends CalloutBase implements Execution {
       return defaultValue;
     }
     ctypes = resolveVariableReferences(ctypes, msgCtxt);
-    return Arrays
-      .asList(ctypes.split("\\s*,\\s*"))
-      .stream()
-      .map( XopHandler::unquote )
-      .collect(Collectors.toList());
+    return Arrays.asList(ctypes.split("\\s*,\\s*")).stream()
+        .map(XopHandler::unquote)
+        .collect(Collectors.toList());
   }
 
   private List<String> getAcceptablePart1ContentTypes(MessageContext msgCtxt) {
-    return getList(msgCtxt,"part1-ctypes", DEFAULT_PART1_CTYPES);
+    return getList(msgCtxt, "part1-ctypes", DEFAULT_PART1_CTYPES);
   }
 
   private List<String> getAcceptableAttachmentContentTypes(MessageContext msgCtxt) {
-    return getList(msgCtxt,"part2-ctypes", DEFAULT_PART2_CTYPES);
+    return getList(msgCtxt, "part2-ctypes", DEFAULT_PART2_CTYPES);
   }
 
   public String getVarnamePrefix() {
@@ -143,10 +151,7 @@ public class XopHandler extends CalloutBase implements Execution {
   }
 
   private static boolean acceptableCtype(List<String> acceptableList, String ctype) {
-    return
-      acceptableList
-      .stream()
-      .anyMatch( s -> ctype.startsWith(s) );
+    return acceptableList.stream().anyMatch(s -> ctype.startsWith(s));
   }
 
   // private static boolean acceptableAttachmentContentType(String ctype) {
@@ -166,38 +171,77 @@ public class XopHandler extends CalloutBase implements Execution {
   // xmlns:xop='http://www.w3.org/2004/08/xop/include'
   // <xop:Include href="cid:uuid-here"/>
 
-  private static String embedAttachment(Document document, InputStream binaryIn) throws Exception {
-    XPathEvaluator xpe = new XPathEvaluator();
+  private static String embedAttachments(
+      Document document, MultipartInput mpi, List<String> acceptableAttachmentContentTypes)
+      throws Exception {
+
+    // Match up the include elements with the streams for the attachment parts.
+
+    // prepare to get the list of xop:Include elements in the document
+    final XPathEvaluator xpe = new XPathEvaluator();
     xpe.registerNamespace("xop", "http://www.w3.org/2004/08/xop/include");
-    String xpath = "//xop:Include";
-    NodeList nodes = (NodeList) xpe.evaluate(xpath, document, XPathConstants.NODESET);
-    if (nodes.getLength() == 0) {
-      throw new IllegalStateException("could not find xop:Include element in the XML document");
-    }
-    if (nodes.getLength() != 1) {
-      throw new IllegalStateException(
-          "found more than one xop:Include element in the XML document");
-    }
 
-    // replace the Include element with the referenced text (base64 encoded)
-    Node targetNode = nodes.item(0);
-    Node parent = targetNode.getParentNode();
-    NodeList children = parent.getChildNodes();
-
-    for (int ix = children.getLength()-1; ix >=0; ix--) {
-      Node child = children.item(ix);
-      if (child.getNodeType() == Node.ELEMENT_NODE && child != targetNode) {
-       throw new IllegalStateException(
-           "the xop:Include element is not the sole child of its parent");
+    // traverse the attachment streams in order.
+    int p = 1;
+    for (PartInput attachmentPart; (attachmentPart = mpi.nextPart()) != null; ) {
+      p++;
+      // get the InputStream for the the attachment here
+      String ctype = attachmentPart.getContentType();
+      if (ctype == null) {
+        throw new IllegalStateException(String.format("no content-type found for part #%d", p));
       }
-      parent.removeChild(child);
+
+      if (!acceptableCtype(acceptableAttachmentContentTypes, ctype)) {
+        throw new IllegalStateException(
+            String.format("unexpected content-type for part #%d (%s)", p, ctype));
+      }
+
+      final String partContentIdHeader = attachmentPart.getHeaderField("Content-ID");
+      if (partContentIdHeader == null) {
+        throw new IllegalStateException(String.format("missing Content-ID for part #%d", p));
+      }
+      Matcher m = contentIdPattern.matcher(partContentIdHeader.trim());
+      if (!m.matches()) {
+        throw new IllegalStateException(String.format("malformed Content-ID for part #%d", p));
+      }
+      // extract the string enclosed in angle brackets
+      final String desiredHref = "cid:" + m.group(1);
+
+      // find the matching element
+      final String xpath = String.format("//xop:Include[@href='%s']", desiredHref);
+      NodeList includes = (NodeList) xpe.evaluate(xpath, document, XPathConstants.NODESET);
+      if (includes.getLength() == 0) {
+        throw new IllegalStateException(
+            String.format(
+                "no matching xop:Include element in the XML document (href='%s')", desiredHref));
+      }
+      if (includes.getLength() != 1) {
+        throw new IllegalStateException(
+            String.format(
+                "multiple matching xop:Include elements in the XML document (href='%s')",
+                desiredHref));
+      }
+
+      Element includeElement = (Element) includes.item(0);
+      Node parent = includeElement.getParentNode();
+      NodeList children = parent.getChildNodes();
+
+      // remove all child whitespace text nodes, and check that there are no child Elements
+      for (int ix = children.getLength() - 1; ix >= 0; ix--) {
+        Node child = children.item(ix);
+        if (child.getNodeType() == Node.ELEMENT_NODE && !includeElement.equals(child)) {
+          throw new IllegalStateException(
+              "the xop:Include element is not the sole child of its parent");
+        }
+        parent.removeChild(child);
+      }
+
+      Node newNode =
+          document.createTextNode(
+              b64Encoder.encodeToString(IOUtil.readAllBytes(attachmentPart.getInputStream())));
+
+      parent.appendChild(newNode);
     }
-
-    Node newNode =
-        document.createTextNode(b64Encoder.encodeToString(IOUtil.readAllBytes(binaryIn)));
-
-    parent.appendChild(newNode);
-
     return XmlUtils.toString(document, true);
   }
 
@@ -267,7 +311,8 @@ public class XopHandler extends CalloutBase implements Execution {
         if (ctype2 == null) {
           throw new IllegalStateException("no content-type found (part2)");
         }
-        List<String> acceptableAttachmentContentTypes = getAcceptableAttachmentContentTypes(msgCtxt);
+        List<String> acceptableAttachmentContentTypes =
+            getAcceptableAttachmentContentTypes(msgCtxt);
         if (!acceptableCtype(acceptableAttachmentContentTypes, ctype2)) {
           throw new IllegalStateException(
               String.format("unexpected content-type for part #2 (%s)", ctype2));
@@ -298,22 +343,11 @@ public class XopHandler extends CalloutBase implements Execution {
         }
         Document document = XmlUtils.parseXml(partInput1.getInputStream());
 
-        // 2. get the InputStream for the the attachment here
-        PartInput partInput2 = mpi.nextPart();
-        String ctype2 = partInput2.getContentType();
-        if (ctype2 == null) {
-          throw new IllegalStateException("no content-type found (part2)");
-        }
-        List<String> acceptableAttachmentContentTypes = getAcceptableAttachmentContentTypes(msgCtxt);
-        if (!acceptableCtype(acceptableAttachmentContentTypes, ctype2)) {
-          throw new IllegalStateException(
-              String.format("unexpected content-type for part #2 (%s)", ctype2));
-        }
+        // 2. embed the encoded attachments into the XML
+        String resultXml =
+            embedAttachments(document, mpi, getAcceptableAttachmentContentTypes(msgCtxt));
 
-        // 3. embed the encoded attachment into the XML
-        String resultXml = embedAttachment(document, partInput2.getInputStream());
-
-        // 4. set the result as the response stream
+        // 3. set the result as the response stream
         message.setContent(new ByteArrayInputStream(resultXml.getBytes()));
         message.setHeader("content-type", "text/xml");
 

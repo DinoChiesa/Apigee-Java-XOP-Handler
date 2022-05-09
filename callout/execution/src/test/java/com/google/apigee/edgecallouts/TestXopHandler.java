@@ -497,10 +497,22 @@ public class TestXopHandler {
     Object output = msg.getContent();
     Assert.assertNotNull(output, "no output");
 
-    System.out.printf("Result:\n%s\n", (String) output);
+    //System.out.printf("Result:\n%s\n", (String) output);
 
-    Document xmlDoc = XmlUtils.parseXml((String) output);
-    Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
+    Document doc = XmlUtils.parseXml((String) output);
+    Assert.assertNotNull(doc, "cannot instantiate XML document");
+    NodeList nl = doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
+    Assert.assertEquals(nl.getLength(), 0, "Include elements");
+
+    nl = doc.getElementsByTagNameNS("http://www.oracle.com/UCM", "Contents");
+    Assert.assertEquals(nl.getLength(), 1, "Contents element");
+
+    String encodedString = nl.item(0).getTextContent();
+    byte[] decodedBytes = Base64.getDecoder().decode(encodedString);
+
+    // In THIS PARTICULAR CASE, the decodedBytes will form a string.
+    String decodedString = new String(decodedBytes, StandardCharsets.UTF_8);
+    Assert.assertEquals("...binary zip data...\n", decodedString, "decoded string");
   }
 
   @Test
@@ -575,7 +587,7 @@ public class TestXopHandler {
 
     // write this content to a file, just for diagnostics purposes
     File contentFile = inputStreamToTempFile(contentInputStream);
-    System.out.printf("\n\nContent File for Input:\n%s\n", (String) contentFile.getAbsolutePath());
+    //System.out.printf("\n\nContent File for Input:\n%s\n", (String) contentFile.getAbsolutePath());
 
     // now slurp up the file, to use for content
     msgCtxt.getMessage().setContent(new FileInputStream(contentFile));
@@ -603,7 +615,7 @@ public class TestXopHandler {
     String output = (String) msg.getContent();
     Assert.assertNotNull(output, "no output");
 
-    System.out.printf("Result:\n%s\n", output);
+    //System.out.printf("Result:\n%s\n", output);
 
     Document xmlDoc = XmlUtils.parseXml(output);
     Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
@@ -757,7 +769,7 @@ public class TestXopHandler {
       Message msg = msgCtxt.getMessage();
       String output = msg.getContent();
       Assert.assertNotNull(output, "no output");
-      //System.out.printf("%s\n", output);
+
       Document doc = XmlUtils.parseXml(output);
       NodeList nl = doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
       Assert.assertEquals(nl.getLength(), 0, "Include elements");

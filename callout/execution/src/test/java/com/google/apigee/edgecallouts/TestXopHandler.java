@@ -218,8 +218,7 @@ public class TestXopHandler {
   }
 
   private static final String msg1 =
-      ""
-          + "--@@MIME_BOUNDARY@@\n"
+      "--@@MIME_BOUNDARY@@\n"
           + "Content-Type: @@XMLCTYPE@@; charset=UTF-8\n"
           + "Content-Transfer-Encoding: 8bit\n"
           + "Content-ID: @@CONTENT_ID_1@@\n"
@@ -227,13 +226,17 @@ public class TestXopHandler {
           + "<S:Envelope xmlns:S='http://schemas.xmlsoap.org/soap/envelope/'>\n"
           + "  <S:Header>\n"
           + "    <wsse:Security\n"
-          + "        xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>\n"
+          + "       "
+          + " xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>\n"
           + "      <wsse:UsernameToken\n"
-          + "          xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>\n"
+          + "         "
+          + " xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>\n"
           + "        <wsse:Username\n"
-          + "            xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>XXXXXX</wsse:Username>\n"
+          + "           "
+          + " xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>XXXXXX</wsse:Username>\n"
           + "        <wsse:Password\n"
-          + "            xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>XXXXXX</wsse:Password>\n"
+          + "           "
+          + " xmlns:wsse='http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'>XXXXXX</wsse:Password>\n"
           + "      </wsse:UsernameToken>\n"
           + "    </wsse:Security>\n"
           + "  </S:Header>\n"
@@ -248,11 +251,14 @@ public class TestXopHandler {
           + "          <Field name='dSecurityGroup'>FAFusionImportExport</Field>\n"
           + "          <Field name='dDocAccount'>hcm$/dataloader$/import$</Field>\n"
           + "          <Field name='dDocType'>Application</Field>\n"
-          + "          <Field name='dDocTitle'>201807111403445918_76_I228_1_ValueSet_Budget_Center_ID_Independent.zip</Field>\n"
-          + "          <File name='primaryFile' href='201807111403445918_76_I228_1_ValueSet_Budget_Center_ID_Independent.zip'>\n"
+          + "          <Field"
+          + " name='dDocTitle'>201807111403445918_76_I228_1_ValueSet_Budget_Center_ID_Independent.zip</Field>\n"
+          + "          <File name='primaryFile'"
+          + " href='201807111403445918_76_I228_1_ValueSet_Budget_Center_ID_Independent.zip'>\n"
           + "            <Contents>\n"
           + "              <Include\n"
-          + "                  xmlns='http://www.w3.org/2004/08/xop/include' href='cid:0b83cd6b-af15-45d2-bbda-23895de2a73d'/>\n"
+          + "                  xmlns='http://www.w3.org/2004/08/xop/include'"
+          + " href='cid:0b83cd6b-af15-45d2-bbda-23895de2a73d'/>\n"
           + "            </Contents>\n"
           + "          </File>\n"
           + "        </Document>\n"
@@ -272,8 +278,7 @@ public class TestXopHandler {
           + "\n";
 
   private static final String msg2 =
-      ""
-          + "--@@MIME_BOUNDARY@@\n"
+      "--@@MIME_BOUNDARY@@\n"
           + "Content-Type: @@XMLCTYPE@@; charset=UTF-8\n"
           + "Content-Transfer-Encoding: 8bit\n"
           + "Content-ID: @@CONTENT_ID_1@@\n"
@@ -286,7 +291,8 @@ public class TestXopHandler {
           + " <submitClaim>\n"
           + "  <accountNumber>5XJ45-3B2</accountNumber>\n"
           + "  <eventType>accident</eventType>\n"
-          + "  <image xop-mime:content-type='image/bmp'><xop:Include href='cid:image@insurance.com'/></image>\n"
+          + "  <image xop-mime:content-type='image/bmp'><xop:Include"
+          + " href='cid:image@insurance.com'/></image>\n"
           + " </submitClaim>\n"
           + " </soap:Body>\n"
           + "</soap:Envelope>\n"
@@ -497,7 +503,7 @@ public class TestXopHandler {
     Object output = msg.getContent();
     Assert.assertNotNull(output, "no output");
 
-    //System.out.printf("Result:\n%s\n", (String) output);
+    // System.out.printf("Result:\n%s\n", (String) output);
 
     Document doc = XmlUtils.parseXml((String) output);
     Assert.assertNotNull(doc, "cannot instantiate XML document");
@@ -587,7 +593,8 @@ public class TestXopHandler {
 
     // write this content to a file, just for diagnostics purposes
     File contentFile = inputStreamToTempFile(contentInputStream);
-    //System.out.printf("\n\nContent File for Input:\n%s\n", (String) contentFile.getAbsolutePath());
+    // System.out.printf("\n\nContent File for Input:\n%s\n", (String)
+    // contentFile.getAbsolutePath());
 
     // now slurp up the file, to use for content
     msgCtxt.getMessage().setContent(new FileInputStream(contentFile));
@@ -615,7 +622,7 @@ public class TestXopHandler {
     String output = (String) msg.getContent();
     Assert.assertNotNull(output, "no output");
 
-    //System.out.printf("Result:\n%s\n", output);
+    // System.out.printf("Result:\n%s\n", output);
 
     Document xmlDoc = XmlUtils.parseXml(output);
     Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
@@ -774,7 +781,8 @@ public class TestXopHandler {
       NodeList nl = doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
       Assert.assertEquals(nl.getLength(), 0, "Include elements");
 
-      nl = doc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
+      nl =
+          doc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
       Assert.assertEquals(nl.getLength(), 2, "Attachment elements");
 
       for (int ix = 0; ix < nl.getLength(); ix++) {
@@ -784,6 +792,65 @@ public class TestXopHandler {
         Node child = children.item(0);
         Assert.assertEquals(Node.TEXT_NODE, child.getNodeType(), "Child node");
       }
+    }
+  }
+
+  @Test
+  public void urlEncodedContentId() throws Exception {
+    final String relativeFileName = "acord-with-url-encoded-content-id.bin";
+
+    try (InputStream input =
+            new FileInputStream(Paths.get(testDataDir, relativeFileName).toFile());
+        InputStreamReader charReader = new InputStreamReader(input);
+        BufferedReader reader = new BufferedReader(charReader)) {
+      String headerLine = reader.readLine().trim();
+
+      Pattern contentTypeHeaderPattern = Pattern.compile("(?i)^content-type *: *(.+)$");
+      Matcher m = contentTypeHeaderPattern.matcher(headerLine);
+      if (!m.matches()) {
+        throw new IllegalStateException("unexpected content-id header in test input");
+      }
+      msgCtxt.setVariable("message.header.content-type", m.group(1).trim());
+      msgCtxt.setVariable("message.header.mime-version", "1.0");
+      msgCtxt.setVariable(
+          "message.content",
+          reader.lines().collect(Collectors.joining(System.lineSeparator())).trim());
+
+      Properties props = new Properties();
+      props.put("source", "message");
+      props.put("action", "TRANSFORM_TO_EMBEDDED");
+      // props.put("debug", "true");
+
+      XopHandler callout = new XopHandler(props);
+
+      // execute and retrieve output
+      ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+      ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+      Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+
+      // check result and output
+      Object error = msgCtxt.getVariable("xop_error");
+      Assert.assertNull(error, "error");
+
+      Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+      Assert.assertNull(stacktrace, "stacktrace");
+      Message msg = msgCtxt.getMessage();
+      String output = msg.getContent();
+      Assert.assertNotNull(output, "no output");
+
+      Document doc = XmlUtils.parseXml(output);
+      NodeList nl = doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
+      Assert.assertEquals(nl.getLength(), 0, "Include elements");
+
+      nl =
+          doc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
+      Assert.assertEquals(nl.getLength(), 1, "Attachment elements");
+
+      Element attachmentElt = (Element) nl.item(0);
+      NodeList children = attachmentElt.getChildNodes();
+      Assert.assertEquals(children.getLength(), 1, "Attachment elements");
+      Node child = children.item(0);
+      Assert.assertEquals(Node.TEXT_NODE, child.getNodeType(), "Child node");
     }
   }
 }

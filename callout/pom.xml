@@ -4,7 +4,7 @@
   <groupId>com.google.apigee.callout</groupId>
   <artifactId>xop-editor-callout</artifactId>
   <packaging>pom</packaging>
-  <version>20210708</version>
+  <version>20220706</version>
   <name>Parent project for XOP Handler callout</name>
   <url>https://github.com/DinoChiesa/ApigeeEdge-Java-XOP-Editor</url>
   <properties>
@@ -14,7 +14,7 @@
   </properties>
 
   <modules>
-    <module>library</module>
+    <module>multipart-handler-library</module>
     <module>execution</module>
   </modules>
 

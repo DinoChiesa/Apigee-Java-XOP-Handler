@@ -32,11 +32,13 @@ import com.google.apigee.xml.XmlUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -175,13 +177,36 @@ public class XopHandler extends CalloutBase implements Execution {
       Document document, MultipartInput mpi, List<String> acceptableAttachmentContentTypes)
       throws Exception {
 
-    // Match up the include elements with the streams for the attachment parts.
-
     // prepare to get the list of xop:Include elements in the document
     final XPathEvaluator xpe = new XPathEvaluator();
     xpe.registerNamespace("xop", "http://www.w3.org/2004/08/xop/include");
 
-    // traverse the attachment streams in order.
+    Function<String, Element> findIncludeElement =
+        (contentId) -> {
+          try {
+            final String desiredHref = "cid:" + contentId;
+
+            // find the matching element
+            final String xpath = String.format("//xop:Include[@href='%s']", desiredHref);
+            NodeList includes = (NodeList) xpe.evaluate(xpath, document, XPathConstants.NODESET);
+            if (includes.getLength() == 0) {
+              return null;
+            }
+            if (includes.getLength() != 1) {
+              throw new IllegalStateException(
+                  String.format(
+                      "multiple matching xop:Include elements in the XML document (href='%s')",
+                      desiredHref));
+            }
+            return (Element) includes.item(0);
+
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        };
+
+    // Match up the include elements with the streams for the attachment parts.
+    // Traverse the attachment streams in order.
     int p = 1;
     for (PartInput attachmentPart; (attachmentPart = mpi.nextPart()) != null; ) {
       p++;
@@ -200,29 +225,29 @@ public class XopHandler extends CalloutBase implements Execution {
       if (partContentIdHeader == null) {
         throw new IllegalStateException(String.format("missing Content-ID for part #%d", p));
       }
+
+      // extract the string enclosed in angle brackets
       Matcher m = contentIdPattern.matcher(partContentIdHeader.trim());
       if (!m.matches()) {
         throw new IllegalStateException(String.format("malformed Content-ID for part #%d", p));
       }
-      // extract the string enclosed in angle brackets
-      final String desiredHref = "cid:" + m.group(1);
 
-      // find the matching element
-      final String xpath = String.format("//xop:Include[@href='%s']", desiredHref);
-      NodeList includes = (NodeList) xpe.evaluate(xpath, document, XPathConstants.NODESET);
-      if (includes.getLength() == 0) {
-        throw new IllegalStateException(
-            String.format(
-                "no matching xop:Include element in the XML document (href='%s')", desiredHref));
-      }
-      if (includes.getLength() != 1) {
-        throw new IllegalStateException(
-            String.format(
-                "multiple matching xop:Include elements in the XML document (href='%s')",
-                desiredHref));
+      // find the unique matching xop:Include element for this part
+      String contentId = m.group(1);
+      Element includeElement = findIncludeElement.apply(contentId);
+      if (includeElement == null) {
+        // Now, re-try with url-encoded value.
+        // There is no "encode-for-uri" function in xpath 1.0, so we need to evaluate twice.
+        String urlEncodedContentId = URLEncoder.encode(contentId, StandardCharsets.UTF_8.name());
+        includeElement = findIncludeElement.apply(urlEncodedContentId);
+        if (includeElement == null) {
+          throw new IllegalStateException(
+              String.format(
+                  "no matching xop:Include element in the XML document (href='cid:%s')",
+                  contentId));
+        }
       }
 
-      Element includeElement = (Element) includes.item(0);
       Node parent = includeElement.getParentNode();
       NodeList children = parent.getChildNodes();
 

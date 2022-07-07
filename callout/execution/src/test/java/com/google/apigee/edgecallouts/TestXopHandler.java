@@ -39,6 +39,7 @@ import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
@@ -797,60 +798,67 @@ public class TestXopHandler {
 
   @Test
   public void urlEncodedContentId() throws Exception {
-    final String relativeFileName = "acord-with-url-encoded-content-id.bin";
+    Arrays.asList("acord-with-url-encoded-content-id.bin", "encoded-content-ex2.bin")
+      .stream()
+      .forEach( relativeFileName -> {
 
-    try (InputStream input =
-            new FileInputStream(Paths.get(testDataDir, relativeFileName).toFile());
-        InputStreamReader charReader = new InputStreamReader(input);
-        BufferedReader reader = new BufferedReader(charReader)) {
-      String headerLine = reader.readLine().trim();
+          try (InputStream input =
+               new FileInputStream(Paths.get(testDataDir, relativeFileName).toFile());
+               InputStreamReader charReader = new InputStreamReader(input);
+               BufferedReader reader = new BufferedReader(charReader)) {
+            String headerLine = reader.readLine().trim();
 
-      Pattern contentTypeHeaderPattern = Pattern.compile("(?i)^content-type *: *(.+)$");
-      Matcher m = contentTypeHeaderPattern.matcher(headerLine);
-      if (!m.matches()) {
-        throw new IllegalStateException("unexpected content-id header in test input");
-      }
-      msgCtxt.setVariable("message.header.content-type", m.group(1).trim());
-      msgCtxt.setVariable("message.header.mime-version", "1.0");
-      msgCtxt.setVariable(
-          "message.content",
-          reader.lines().collect(Collectors.joining(System.lineSeparator())).trim());
+            Pattern contentTypeHeaderPattern = Pattern.compile("(?i)^content-type *: *(.+)$");
+            Matcher m = contentTypeHeaderPattern.matcher(headerLine);
+            if (!m.matches()) {
+              throw new IllegalStateException("unexpected content-id header in test input");
+            }
+            msgCtxt.setVariable("message.header.content-type", m.group(1).trim());
+            msgCtxt.setVariable("message.header.mime-version", "1.0");
+            msgCtxt.setVariable(
+                                "message.content",
+                                reader.lines().collect(Collectors.joining(System.lineSeparator())).trim());
 
-      Properties props = new Properties();
-      props.put("source", "message");
-      props.put("action", "TRANSFORM_TO_EMBEDDED");
-      // props.put("debug", "true");
+            Properties props = new Properties();
+            props.put("source", "message");
+            props.put("action", "TRANSFORM_TO_EMBEDDED");
+            // props.put("debug", "true");
 
-      XopHandler callout = new XopHandler(props);
+            XopHandler callout = new XopHandler(props);
 
-      // execute and retrieve output
-      ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
-      ExecutionResult expectedResult = ExecutionResult.SUCCESS;
-      Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+            // execute and retrieve output
+            ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+            ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+            Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
 
-      // check result and output
-      Object error = msgCtxt.getVariable("xop_error");
-      Assert.assertNull(error, "error");
+            // check result and output
+            Object error = msgCtxt.getVariable("xop_error");
+            Assert.assertNull(error, "error");
 
-      Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
-      Assert.assertNull(stacktrace, "stacktrace");
-      Message msg = msgCtxt.getMessage();
-      String output = msg.getContent();
-      Assert.assertNotNull(output, "no output");
+            Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+            Assert.assertNull(stacktrace, "stacktrace");
+            Message msg = msgCtxt.getMessage();
+            String output = msg.getContent();
+            Assert.assertNotNull(output, "no output");
 
-      Document doc = XmlUtils.parseXml(output);
-      NodeList nl = doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
-      Assert.assertEquals(nl.getLength(), 0, "Include elements");
+            Document doc = XmlUtils.parseXml(output);
+            NodeList nl = doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
+            Assert.assertEquals(nl.getLength(), 0, "Include elements");
 
-      nl =
-          doc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
-      Assert.assertEquals(nl.getLength(), 1, "Attachment elements");
+            nl =
+              doc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
+            Assert.assertEquals(nl.getLength(), 1, "Attachment elements");
 
-      Element attachmentElt = (Element) nl.item(0);
-      NodeList children = attachmentElt.getChildNodes();
-      Assert.assertEquals(children.getLength(), 1, "Attachment elements");
-      Node child = children.item(0);
-      Assert.assertEquals(Node.TEXT_NODE, child.getNodeType(), "Child node");
-    }
+            Element attachmentElt = (Element) nl.item(0);
+            NodeList children = attachmentElt.getChildNodes();
+            Assert.assertEquals(children.getLength(), 1, "Attachment elements");
+            Node child = children.item(0);
+            Assert.assertEquals(Node.TEXT_NODE, child.getNodeType(), "Child node");
+          }
+          catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
+
   }
 }

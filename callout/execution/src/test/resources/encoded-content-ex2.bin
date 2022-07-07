@@ -1,0 +1,118 @@
+Content-Type: multipart/related; type="application/xop+xml"; start="<http://tempuri.org/0/>"; start-info="text/xml"; boundary="8997b0ab-852a-406f-bc43-a8b48321efa5+id=20"
+
+--8997b0ab-852a-406f-bc43-a8b48321efa5+id=20
+Content-Type: application/xop+xml; charset=utf-8; type="text/xml"
+Content-Transfer-Encoding: binary
+Content-ID: <http://tempuri.org/0/>
+
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+    <soapenv:Header>
+        <ch:MessageHeader
+            xmlns:ch="http://abc.com/">
+            <ch:MessageName>Withdrawal</ch:MessageName>
+            <ch:RouteInfo>
+                <ch:FromParticipant>0057</ch:FromParticipant>
+                <ch:ToParticipant>4597</ch:ToParticipant>
+                <ch:Sender>EDWARD_JONES</ch:Sender>
+                <ch:TransmissionDate>2022-04-07</ch:TransmissionDate>
+                <ch:TransmissionTime>11:32:03.0000000-04:00</ch:TransmissionTime>
+            </ch:RouteInfo>
+        </ch:MessageHeader>
+    </soapenv:Header>
+    <soapenv:Body>
+        <ns3:processWithdrawal
+            xmlns:ns3="http://abc.com/"
+            xmlns:ns2="http://ACORD.org/Standards/Life/2">
+            <ns2:Withdrawal_Msg>
+                <ns2:TXLife>
+                    <ns2:TXLifeRequest PrimaryObjectID="AnnuityOrder757238">
+                        <ns2:TransRefGUID>0369e970-e4c2-452c-894e-aa34aba3c428</ns2:TransRefGUID>
+                        <ns2:TransType tc="105">Withdrawal</ns2:TransType>
+                        <ns2:TransExeDate>2022-04-07</ns2:TransExeDate>
+                        <ns2:TransExeTime>11:32:04-04:00</ns2:TransExeTime>
+                        <ns2:TransMode tc="2">Original request. Sent by sender.</ns2:TransMode>
+                        <ns2:PendingResponseOK tc="1">True</ns2:PendingResponseOK>
+                        <ns2:SupportMultipleResponsesInd tc="1">True</ns2:SupportMultipleResponsesInd>
+                        <ns2:OLifE>
+                            <ns2:Holding id="AnnuityOrder757238">
+                                <ns2:HoldingTypeCode tc="2">Policy</ns2:HoldingTypeCode>
+                                <ns2:DistributorClientAcctNum>561651</ns2:DistributorClientAcctNum>
+                                <ns2:Policy CarrierPartyID="Party_Carrier">
+                                    <ns2:PolNumber>E1885415</ns2:PolNumber>
+                                    <ns2:CarrierCode>79227</ns2:CarrierCode>
+                                    <ns2:CusipNum>74429E164</ns2:CusipNum>
+                                </ns2:Policy>
+
+                            </ns2:Holding>
+                            <ns2:Party id="Party_Distributor">
+                                <ns2:PartyTypeCode tc="2">Organization</ns2:PartyTypeCode>
+
+                            </ns2:Party>
+                            <ns2:Party id="Party_Carrier">
+                                <ns2:PartyTypeCode tc="2">Organization</ns2:PartyTypeCode>
+
+                                <ns2:Carrier>
+                                    <ns2:CarrierCode>79227</ns2:CarrierCode>
+                                </ns2:Carrier>
+                            </ns2:Party>
+                            <ns2:Party id="Party_Agent">
+                                <ns2:PartyTypeCode tc="1">Person</ns2:PartyTypeCode>
+                                <ns2:Person>
+                                    <ns2:FirstName>HOPAN</ns2:FirstName>
+                                    <ns2:LastName>DANDRIDGE</ns2:LastName>
+                                </ns2:Person>
+                                <ns2:Producer>
+                                    <ns2:NIPRNumber>34567891</ns2:NIPRNumber>
+                                </ns2:Producer>
+                                <ns2:PartialIdentification>
+                                    <ns2:IdentificationPart>8241</ns2:IdentificationPart>
+                                    <ns2:PartialIDType tc="1">SSN</ns2:PartialIDType>
+                                </ns2:PartialIdentification>
+                            </ns2:Party>
+                            <ns2:Party id="Party_PrimaryOwner">
+                                <ns2:PartyTypeCode tc="1">Person</ns2:PartyTypeCode>
+                                <ns2:Person>
+                                    <ns2:FirstName>Test</ns2:FirstName>
+                                    <ns2:LastName>Owner</ns2:LastName>
+                                </ns2:Person>
+
+                            </ns2:Party>
+
+                            <ns2:FormInstance id="FormInstance_486844">
+                                <ns2:FormName>Required Forms For Client Signature</ns2:FormName>
+                                <ns2:ProviderFormNumber>PDFmanifest</ns2:ProviderFormNumber>
+                                <ns2:Attachment id="xx486844">
+                                    <ns2:DateCreated>2022-04-07</ns2:DateCreated>
+                                    <ns2:AttachmentBasicType tc="3">File</ns2:AttachmentBasicType>
+                                    <ns2:AttachmentData64Binary>
+                                        <xop:Include
+                                            xmlns:xop="http://www.w3.org/2004/08/xop/include" href="cid:5d31ab1f59579aad895dc7a32d31d3c859ddf4343570fc10%40apache.org">
+                                        </xop:Include>
+                                    </ns2:AttachmentData64Binary>
+                                    <ns2:AttachmentType tc="1">Document</ns2:AttachmentType>
+                                    <ns2:MimeTypeTC tc="17">File/PDF</ns2:MimeTypeTC>
+                                    <ns2:TransferEncodingTypeTC tc="4">Base 64</ns2:TransferEncodingTypeTC>
+                                    <ns2:AttachmentLocation tc="5">XOP Include</ns2:AttachmentLocation>
+                                    <ns2:AttachmentHashValue>2352FB48E31460C789C6822926F6B728C85A70B5</ns2:AttachmentHashValue>
+                                    <ns2:AttachmentHashType tc="2">2</ns2:AttachmentHashType>
+                                </ns2:Attachment>
+
+                            </ns2:FormInstance>
+                        </ns2:OLifE>
+                    </ns2:TXLifeRequest>
+                </ns2:TXLife>
+            </ns2:Withdrawal_Msg>
+        </ns3:processWithdrawal>
+    </soapenv:Body>
+</soapenv:Envelope>
+
+--8997b0ab-852a-406f-bc43-a8b48321efa5+id=20
+Content-Type: application/pdf
+Content-Transfer-Encoding: binary
+Content-ID: <5d31ab1f59579aad895dc7a32d31d3c859ddf4343570fc10@apache.org>
+
+%PDF-1.7 %%EOF
+
+--8997b0ab-852a-406f-bc43-a8b48321efa5+id=20--

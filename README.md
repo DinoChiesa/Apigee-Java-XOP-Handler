@@ -149,7 +149,7 @@ The configuration for the callout accepts various properties which affects the c
   <!-- specify the properties here -->
   <Properties>
     <Property name="source">message</Property>
-    <Property name="action">edit_1</Property>
+    <Property name="action">transform_to_embedded</Property> <!-- see options below -->
     <!-- ...more here... -->
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
@@ -164,6 +164,25 @@ The configuration for the callout accepts various properties which affects the c
 | part1-ctypes | optional. The comma-separated list of acceptable Content-types for the first part of the multi-part message. Defaults to: (application/soap+xml, application/xop+xml, text/xml) |
 | part2-ctypes | optional. The comma-separated list of acceptable Content-types for the second part of the multi-part message. Defaults to: (application/zip, application/octet-stream, image/jpeg, image/png, application/pdf) |
 
+
+### Example: handling image/tiff and image/png
+
+By default the callout does not handle attachments with the `image/tiff` content
+type. You can configure the callout to allow that by using `part2-ctypes`:
+
+```xml
+<JavaCallout name='Java-ProcessXop-2'>
+  <!-- specify the properties here -->
+  <Properties>
+    <Property name="source">message</Property>
+    <Property name="action">transform_to_embedded</Property>
+    <!-- allow either png or tiff -->
+    <Property name="part2-ctypes">image/tiff, image/png</Property>
+  </Properties>
+  <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
+  <ResourceURL>java://apigee-custom-xop-handler-20220706.jar</ResourceURL>
+</JavaCallout>
+```
 
 ### Regarding the action Property
 

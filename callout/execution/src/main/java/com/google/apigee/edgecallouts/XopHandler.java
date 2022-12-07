@@ -61,6 +61,7 @@ public class XopHandler extends CalloutBase implements Execution {
           "application/octet-stream",
           "image/jpeg",
           "image/png",
+          "image/tiff",
           "application/pdf");
 
   private static final Pattern contentIdPattern = Pattern.compile("^.*<([^>]+)>$");

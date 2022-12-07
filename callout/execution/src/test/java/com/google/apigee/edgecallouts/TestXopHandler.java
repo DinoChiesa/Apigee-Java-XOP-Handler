@@ -51,6 +51,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import javax.xml.parsers.ParserConfigurationException;
 import mockit.Mock;
 import mockit.MockUp;
 import org.testng.Assert;
@@ -60,6 +61,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 public class TestXopHandler {
   private static final String testDataDir = "src/test/resources";
@@ -522,8 +524,8 @@ public class TestXopHandler {
     Assert.assertEquals("...binary zip data...\n", decodedString, "decoded string");
   }
 
-  @Test
-  public void embedPdf() throws Exception {
+  private File produceContentFileWithXopAttachment(String mediaCtype, String mediaFileToEmbed)
+      throws IOException {
     final String outerCtypeTemplate =
         "Multipart/Related; "
             + "boundary=@@MIME_BOUNDARY@@; "
@@ -560,7 +562,7 @@ public class TestXopHandler {
     final String contentId2 = UUID.randomUUID().toString();
     String xmlContent =
         new String(
-            IOUtil.readAllBytes(fileInputStream("acord-example-pdf-attachment.xml")),
+            IOUtil.readAllBytes(fileInputStream("acord-example-doc-attachment.xml")),
             StandardCharsets.UTF_8);
 
     streams.add(
@@ -570,20 +572,19 @@ public class TestXopHandler {
     final String dividerTemplate =
         "\n"
             + "--@@MIME_BOUNDARY@@\n"
-            + "Content-Type: application/pdf\n"
+            + "Content-Type: @@CTYPE@@\n"
             + "Content-Transfer-Encoding: binary\n"
             + "Content-ID: <@@CONTENT_ID_2@@>\n"
             + "\n";
 
     final String divider =
         dividerTemplate
+            .replaceAll("@@CTYPE@@", mediaCtype)
             .replaceAll("@@MIME_BOUNDARY@@", boundary)
             .replaceAll("@@CONTENT_ID_2@@", contentId2);
     streams.add(new ByteArrayInputStream(divider.getBytes(StandardCharsets.UTF_8)));
 
-    String sha256_before = sha256(fileInputStream("Apigee-API-Jam-Datasheet.pdf"));
-
-    streams.add(fileInputStream("Apigee-API-Jam-Datasheet.pdf"));
+    streams.add(fileInputStream(mediaFileToEmbed));
 
     final String trailerTemplate = "\n--@@MIME_BOUNDARY@@--\n";
     final String trailer = trailerTemplate.replaceAll("@@MIME_BOUNDARY@@", boundary);
@@ -592,54 +593,101 @@ public class TestXopHandler {
     SequenceInputStream contentInputStream =
         new SequenceInputStream(Collections.enumeration(streams));
 
-    // write this content to a file, just for diagnostics purposes
     File contentFile = inputStreamToTempFile(contentInputStream);
     // System.out.printf("\n\nContent File for Input:\n%s\n", (String)
     // contentFile.getAbsolutePath());
+    return contentFile;
+  }
 
-    // now slurp up the file, to use for content
+  private void transformToEmbedded_Acord(
+      String mediaCtype,
+      String mediaFileToEmbed,
+      String part2CtypesSpecifier,
+      boolean expectSuccess)
+      throws IOException, NoSuchAlgorithmException, SAXException, ParserConfigurationException {
+
+    String sha256_before = sha256(fileInputStream(mediaFileToEmbed));
+
+    File contentFile = produceContentFileWithXopAttachment(mediaCtype, mediaFileToEmbed);
+    // use that generated file for inbound message content
     msgCtxt.getMessage().setContent(new FileInputStream(contentFile));
 
     Properties props = new Properties();
     props.put("source", "message");
     props.put("action", "TRANSFORM_TO_EMBEDDED");
     props.put("debug", "true");
+    if (part2CtypesSpecifier != null) {
+      props.put("part2-ctypes", part2CtypesSpecifier);
+    }
 
     XopHandler callout = new XopHandler(props);
 
     // execute and retrieve output
     ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
-    ExecutionResult expectedResult = ExecutionResult.SUCCESS;
-    Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
 
-    // check result and output
-    Object error = msgCtxt.getVariable("xop_error");
-    Assert.assertNull(error, "error");
+    if (expectSuccess) {
+      ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+      Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
 
-    Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
-    Assert.assertNull(stacktrace, "stacktrace");
+      // check result and output
+      Object error = msgCtxt.getVariable("xop_error");
+      Assert.assertNull(error, "error");
 
-    Message msg = msgCtxt.getMessage();
-    String output = (String) msg.getContent();
-    Assert.assertNotNull(output, "no output");
+      Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+      Assert.assertNull(stacktrace, "stacktrace");
 
-    // System.out.printf("Result:\n%s\n", output);
+      Message msg = msgCtxt.getMessage();
+      String output = (String) msg.getContent();
+      Assert.assertNotNull(output, "no output");
 
-    Document xmlDoc = XmlUtils.parseXml(output);
-    Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
+      // System.out.printf("Result:\n%s\n", output);
 
-    // compare the before and after content
-    NodeList nl =
-        xmlDoc.getElementsByTagNameNS(
-            "http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
-    Assert.assertEquals(nl.getLength(), 1, "AttachmentData64Binary element");
+      Document xmlDoc = XmlUtils.parseXml(output);
+      Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
 
-    String base64String = nl.item(0).getTextContent();
+      // compare the before and after content
+      NodeList nl =
+          xmlDoc.getElementsByTagNameNS(
+              "http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
+      Assert.assertEquals(nl.getLength(), 1, "AttachmentData64Binary element");
 
-    byte[] decodedContent =
-        Base64.getDecoder().decode(base64String.getBytes(StandardCharsets.UTF_8));
-    String sha256_after = sha256(new ByteArrayInputStream(decodedContent));
-    Assert.assertEquals(sha256_before, sha256_after);
+      String base64String = nl.item(0).getTextContent();
+
+      byte[] decodedContent =
+          Base64.getDecoder().decode(base64String.getBytes(StandardCharsets.UTF_8));
+      String sha256_after = sha256(new ByteArrayInputStream(decodedContent));
+      Assert.assertEquals(sha256_before, sha256_after);
+    } else {
+      ExecutionResult expectedResult = ExecutionResult.ABORT;
+      Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+      Object error = msgCtxt.getVariable("xop_error");
+      Assert.assertNotNull(error, "error");
+    }
+  }
+
+  @Test
+  public void embedPdf() throws Exception {
+    transformToEmbedded_Acord("application/pdf", "Apigee-API-Jam-Datasheet.pdf", null, true);
+  }
+
+  @Test
+  public void embedPdfFail() throws Exception {
+    transformToEmbedded_Acord(
+        "application/pdf",
+        "Apigee-API-Jam-Datasheet.pdf",
+        "image/png",
+        false); // callout will not accept PDF
+  }
+
+  @Test
+  public void embedTiff() throws Exception {
+    transformToEmbedded_Acord("image/tiff", "mountain.tiff", null, true);
+  }
+
+  @Test
+  public void embedTiffFail() throws Exception {
+    transformToEmbedded_Acord(
+        "image/tiff", "mountain.tiff", "image/png", false); // callout will not accept TIFF
   }
 
   @Test
@@ -798,67 +846,66 @@ public class TestXopHandler {
 
   @Test
   public void urlEncodedContentId() throws Exception {
-    Arrays.asList("acord-with-url-encoded-content-id.bin", "encoded-content-ex2.bin")
-      .stream()
-      .forEach( relativeFileName -> {
+    Arrays.asList("acord-with-url-encoded-content-id.bin", "encoded-content-ex2.bin").stream()
+        .forEach(
+            relativeFileName -> {
+              try (InputStream input =
+                      new FileInputStream(Paths.get(testDataDir, relativeFileName).toFile());
+                  InputStreamReader charReader = new InputStreamReader(input);
+                  BufferedReader reader = new BufferedReader(charReader)) {
+                String headerLine = reader.readLine().trim();
 
-          try (InputStream input =
-               new FileInputStream(Paths.get(testDataDir, relativeFileName).toFile());
-               InputStreamReader charReader = new InputStreamReader(input);
-               BufferedReader reader = new BufferedReader(charReader)) {
-            String headerLine = reader.readLine().trim();
+                Pattern contentTypeHeaderPattern = Pattern.compile("(?i)^content-type *: *(.+)$");
+                Matcher m = contentTypeHeaderPattern.matcher(headerLine);
+                if (!m.matches()) {
+                  throw new IllegalStateException("unexpected content-id header in test input");
+                }
+                msgCtxt.setVariable("message.header.content-type", m.group(1).trim());
+                msgCtxt.setVariable("message.header.mime-version", "1.0");
+                msgCtxt.setVariable(
+                    "message.content",
+                    reader.lines().collect(Collectors.joining(System.lineSeparator())).trim());
 
-            Pattern contentTypeHeaderPattern = Pattern.compile("(?i)^content-type *: *(.+)$");
-            Matcher m = contentTypeHeaderPattern.matcher(headerLine);
-            if (!m.matches()) {
-              throw new IllegalStateException("unexpected content-id header in test input");
-            }
-            msgCtxt.setVariable("message.header.content-type", m.group(1).trim());
-            msgCtxt.setVariable("message.header.mime-version", "1.0");
-            msgCtxt.setVariable(
-                                "message.content",
-                                reader.lines().collect(Collectors.joining(System.lineSeparator())).trim());
+                Properties props = new Properties();
+                props.put("source", "message");
+                props.put("action", "TRANSFORM_TO_EMBEDDED");
+                // props.put("debug", "true");
 
-            Properties props = new Properties();
-            props.put("source", "message");
-            props.put("action", "TRANSFORM_TO_EMBEDDED");
-            // props.put("debug", "true");
+                XopHandler callout = new XopHandler(props);
 
-            XopHandler callout = new XopHandler(props);
+                // execute and retrieve output
+                ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+                ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+                Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
 
-            // execute and retrieve output
-            ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
-            ExecutionResult expectedResult = ExecutionResult.SUCCESS;
-            Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+                // check result and output
+                Object error = msgCtxt.getVariable("xop_error");
+                Assert.assertNull(error, "error");
 
-            // check result and output
-            Object error = msgCtxt.getVariable("xop_error");
-            Assert.assertNull(error, "error");
+                Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+                Assert.assertNull(stacktrace, "stacktrace");
+                Message msg = msgCtxt.getMessage();
+                String output = msg.getContent();
+                Assert.assertNotNull(output, "no output");
 
-            Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
-            Assert.assertNull(stacktrace, "stacktrace");
-            Message msg = msgCtxt.getMessage();
-            String output = msg.getContent();
-            Assert.assertNotNull(output, "no output");
+                Document doc = XmlUtils.parseXml(output);
+                NodeList nl =
+                    doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
+                Assert.assertEquals(nl.getLength(), 0, "Include elements");
 
-            Document doc = XmlUtils.parseXml(output);
-            NodeList nl = doc.getElementsByTagNameNS("http://www.w3.org/2004/08/xop/include", "Include");
-            Assert.assertEquals(nl.getLength(), 0, "Include elements");
+                nl =
+                    doc.getElementsByTagNameNS(
+                        "http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
+                Assert.assertEquals(nl.getLength(), 1, "Attachment elements");
 
-            nl =
-              doc.getElementsByTagNameNS("http://ACORD.org/Standards/Life/2", "AttachmentData64Binary");
-            Assert.assertEquals(nl.getLength(), 1, "Attachment elements");
-
-            Element attachmentElt = (Element) nl.item(0);
-            NodeList children = attachmentElt.getChildNodes();
-            Assert.assertEquals(children.getLength(), 1, "Attachment elements");
-            Node child = children.item(0);
-            Assert.assertEquals(Node.TEXT_NODE, child.getNodeType(), "Child node");
-          }
-          catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        });
-
+                Element attachmentElt = (Element) nl.item(0);
+                NodeList children = attachmentElt.getChildNodes();
+                Assert.assertEquals(children.getLength(), 1, "Attachment elements");
+                Node child = children.item(0);
+                Assert.assertEquals(Node.TEXT_NODE, child.getNodeType(), "Child node");
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            });
   }
 }

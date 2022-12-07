@@ -1,7 +1,7 @@
 # Apigee XOP Handler
 
 This directory contains the Java source code and pom.xml file required to build
-a Java callout that reads a multipart/related payload as described in
+a Java callout for Apigee that reads a multipart/related payload as described in
 [IETF RFC 2387](https://datatracker.ietf.org/doc/html/rfc2387) with a
 [XOP](https://www.w3.org/TR/xop10/#xop_include) message payload.
 
@@ -28,13 +28,13 @@ Google product.
 ## Using this policy
 
 You do not need to build the source code in order to use the policy in
-Apigee Edge. All you need is the built jar and the dependencies, and the appropriate
+Apigee. All you need is the built jar and the dependencies, and the appropriate
 configuration for the policy.
 
 If you want to build it, the instructions are at the bottom of this readme.
 
 1. copy the callout jar file, available in
-   `target/apigee-custom-xop-handler-20220706.jar`, and its dependency
+   `target/apigee-custom-xop-handler-20221207.jar`, and its dependency
    `multipart-handler-\*.jar`, to your apiproxy/resources/java directory. You can
    do this offline, or using the graphical Proxy Editor in the Apigee
    Admin UI.
@@ -49,7 +49,7 @@ If you want to build it, the instructions are at the bottom of this readme.
        <Property name="action">edit_1</Property>
      </Properties>
      <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-     <ResourceURL>java://apigee-custom-xop-handler-20220706.jar</ResourceURL>
+     <ResourceURL>java://apigee-custom-xop-handler-20221207.jar</ResourceURL>
    </JavaCallout>
    ```
 
@@ -138,7 +138,7 @@ That is:
   - example: `content-type: multipart/related; type="application/xop+xml"; boundary="uuid:170e63fa-183c-4b18-9364-c62ca545a6e0"; start="<root.message@cxf.apache.org>";`
 - there are two parts following that, each separated by the MIME boundary marker
 - The first part should have an additional content-type header with value `application/soap+xml` or `application/xop+xml`
-- the second part should have a different content-type. It may be `application/zip` `application/pdf` or similar.
+- the second part should have a different content-type. It may be `application/zip` `application/pdf`, an image type, or similar.
 
 ## Callout Configuration
 
@@ -153,7 +153,7 @@ The configuration for the callout accepts various properties which affects the c
     <!-- ...more here... -->
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20220706.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20221207.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -162,17 +162,16 @@ The configuration for the callout accepts various properties which affects the c
 | source       | optional. The variable containing the message tha holds the XOP package. Defaults to `message`. |
 | action       | optional. Specify the primary behavior of the callout. Defaults to `edit_1`. For more on these options, see below.  |
 | part1-ctypes | optional. The comma-separated list of acceptable Content-types for the first part of the multi-part message. Defaults to: (application/soap+xml, application/xop+xml, text/xml) |
-| part2-ctypes | optional. The comma-separated list of acceptable Content-types for the second part of the multi-part message. Defaults to: (application/zip, application/octet-stream, image/jpeg, image/png, application/pdf) |
+| part2-ctypes | optional. The comma-separated list of acceptable Content-types for the second part of the multi-part message. Defaults to: (application/zip, application/octet-stream, image/jpeg, image/png, application/pdf, image/tiff) |
 
 
-### Example: handling image/tiff and image/png
+### Example: handling only image/tiff and image/png
 
-By default the callout does not handle attachments with the `image/tiff` content
-type. You can configure the callout to allow that by using `part2-ctypes`:
+By default the callout handles attachments of many different content types.
+You can configure the callout to allow only PNG and TIFF images by using `part2-ctypes`:
 
 ```xml
 <JavaCallout name='Java-ProcessXop-2'>
-  <!-- specify the properties here -->
   <Properties>
     <Property name="source">message</Property>
     <Property name="action">transform_to_embedded</Property>
@@ -180,7 +179,7 @@ type. You can configure the callout to allow that by using `part2-ctypes`:
     <Property name="part2-ctypes">image/tiff, image/png</Property>
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20220706.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20221207.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -238,17 +237,24 @@ You must deploy the proxy in order to invoke it.
 Invoke it like this:
 
 ```
+# Edge
 ORG=myorg
 ENV=myenv
+endpoint=https://$ORG-$ENV.apigee.net
+# X or hybrid
+endpoint=https://my-custom-endpoint.net
+
 curl -i -X POST --data-binary @example.txt \
    -H "content-type: Multipart/Related; boundary=MIME_boundary; start='<rootpart@soapui.org>'" \
-   https://$ORG-$ENV.apigee.net/xop-handler/t1
+   $endpoint/xop-handler/t1
 ```
 
 
 ## Building
 
-Building from source requires Java 1.8, and Maven.
+You do not need to build this callout in order to use it. But you can build it
+if you like. Building from source requires Java 1.8, and [Apache Maven
+3.5](https://maven.apache.org/download.cgi) or later.
 
 1. unpack (if you can read this, you've already done that).
 
@@ -268,6 +274,14 @@ Building from source requires Java 1.8, and Maven.
    This will build the dependency jar, and the callout jar, and then also run all
    the tests. After successful tests, it will copy the jar to the resource
    directory in the sample apiproxy bundle.
+
+
+## Extending
+
+It should be pretty straightforward to extend this callout so that it does
+things other than the three supported actions. Pull requests are welcomed. See
+the [CONTRIBUTING](./CONTRIBUTING.md) file for more information on submitting
+changes.
 
 
 ## License

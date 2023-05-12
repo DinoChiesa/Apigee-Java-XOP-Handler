@@ -167,7 +167,7 @@ The configuration for the callout accepts various properties which affects the c
 | source       | optional. The variable containing the message tha holds the XOP package. Defaults to `message`. |
 | action       | optional. Specify the primary behavior of the callout. Defaults to `edit_1`. For more on these options, see below.  |
 | part1-ctypes | optional. The comma-separated list of acceptable Content-types for the first part of the multi-part message. Defaults to: (application/soap+xml, application/xop+xml, text/xml) |
-| part2-ctypes | optional. The comma-separated list of acceptable Content-types for the second part of the multi-part message. Defaults to: (application/zip, application/octet-stream, image/jpeg, image/png, application/pdf, image/tiff) |
+| part2-ctypes | optional. The comma-separated list of acceptable Content-types for the second part of the multi-part message. If there are multiple attachments, this would apply to all attachments. Defaults to: (application/zip, application/octet-stream, image/jpeg, image/png, application/pdf, image/tiff) |
 
 
 ### Example: handling only image/tiff and image/png

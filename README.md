@@ -299,7 +299,7 @@ changes.
 
 ## License
 
-This material is Copyright 2018-2022 Google LLC and is licensed under the
+This material is Copyright 2018-2023 Google LLC and is licensed under the
 [Apache 2.0 License](LICENSE). This includes the Java code as well as the API
 Proxy configuration.
 

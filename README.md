@@ -34,7 +34,7 @@ configuration for the policy.
 If you want to build it, the instructions are at the bottom of this readme.
 
 1. copy the callout jar file, available in
-   `target/apigee-custom-xop-handler-20221207.jar`, and its dependency
+   `target/apigee-custom-xop-handler-20230512.jar`, and its dependency
    `multipart-handler-\*.jar`, to your apiproxy/resources/java directory. You can
    do this offline, or using the graphical Proxy Editor in the Apigee
    Admin UI.
@@ -49,11 +49,11 @@ If you want to build it, the instructions are at the bottom of this readme.
        <Property name="action">edit_1</Property>
      </Properties>
      <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-     <ResourceURL>java://apigee-custom-xop-handler-20221207.jar</ResourceURL>
+     <ResourceURL>java://apigee-custom-xop-handler-20230512.jar</ResourceURL>
    </JavaCallout>
    ```
 
-3. use the Edge UI, or a command-line tool like
+3. use the Apigee UI, or a command-line tool like
    [importAndDeploy.js](https://github.com/DinoChiesa/apigee-edge-js-examples/blob/master/importAndDeploy.js) or
    [apigeetool](https://github.com/apigee/apigeetool-node)
    or similar, to import your proxy into an Edge organization, and then deploy the proxy .
@@ -61,7 +61,11 @@ If you want to build it, the instructions are at the bottom of this readme.
 
 4. Use a client to generate and send http requests to the proxy you just deployed . Eg,
    ```
-   curl -i https://$ORG-$ENV.apigee.net/xop-handler/t1 -X POST -d @xopfile.bin
+   # Apigee Edge
+   endpoint=https://$ORG-$ENV.apigee.net
+   # Apigee X or hybrid
+   endpoint=https://my-endpoint.net
+   curl -i $endpoint/xop-handler/t1 -X POST -d @xopfile.bin
    ```
 
 
@@ -153,7 +157,7 @@ The configuration for the callout accepts various properties which affects the c
     <!-- ...more here... -->
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20221207.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20230512.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -179,7 +183,7 @@ You can configure the callout to allow only PNG and TIFF images by using `part2-
     <Property name="part2-ctypes">image/tiff, image/png</Property>
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20221207.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20230512.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -237,11 +241,11 @@ You must deploy the proxy in order to invoke it.
 Invoke it like this:
 
 ```
-# Edge
+# Apigee Edge
 ORG=myorg
 ENV=myenv
 endpoint=https://$ORG-$ENV.apigee.net
-# X or hybrid
+# Apigee X or hybrid
 endpoint=https://my-custom-endpoint.net
 
 curl -i -X POST --data-binary @example.txt \

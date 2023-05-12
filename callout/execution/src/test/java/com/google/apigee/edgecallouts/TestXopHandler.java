@@ -845,6 +845,71 @@ public class TestXopHandler {
   }
 
   @Test
+  public void multipleAttachmentsExtract() throws Exception {
+    final String relativeFileName = "acord-example-multiple-pdf.bin";
+
+    try (InputStream input =
+            new FileInputStream(Paths.get(testDataDir, relativeFileName).toFile());
+        InputStreamReader charReader = new InputStreamReader(input);
+        BufferedReader reader = new BufferedReader(charReader)) {
+      String headerLine = reader.readLine().trim();
+
+      Pattern contentTypeHeaderPattern = Pattern.compile("(?i)^content-type *: *(.+)$");
+      Matcher m = contentTypeHeaderPattern.matcher(headerLine);
+      if (!m.matches()) {
+        throw new IllegalStateException("unexpected content-id header in test input");
+      }
+      msgCtxt.setVariable("message.header.content-type", m.group(1).trim());
+      msgCtxt.setVariable("message.header.mime-version", "1.0");
+      msgCtxt.setVariable(
+          "message.content",
+          reader.lines().collect(Collectors.joining(System.lineSeparator())).trim());
+
+      Properties props = new Properties();
+      props.put("source", "message");
+      props.put("action", "EXTRACT_SOAP");
+      props.put("debug", "true");
+
+      XopHandler callout = new XopHandler(props);
+
+      // execute and retrieve output
+      ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
+      ExecutionResult expectedResult = ExecutionResult.SUCCESS;
+      Assert.assertEquals(actualResult, expectedResult, "ExecutionResult");
+
+
+    // check result and output
+    Object error = msgCtxt.getVariable("xop_error");
+    Assert.assertNull(error, "error");
+
+    Object stacktrace = msgCtxt.getVariable("xop_stacktrace");
+    Assert.assertNull(stacktrace, "stacktrace");
+
+    String xml = msgCtxt.getVariable("xop_extracted_xml");
+    Assert.assertNotNull(xml, "no extracted content");
+    Document xmlDoc = XmlUtils.parseXml(xml);
+    Assert.assertNotNull(xmlDoc, "cannot instantiate XML document");
+
+    byte[] attachment1 = msgCtxt.getVariable("xop_attachment_1_content");
+    Assert.assertNotNull(attachment1, "no extracted attachment1");
+
+    String id1 = msgCtxt.getVariable("xop_attachment_1_content_id");
+    Assert.assertNotNull(id1, "no extracted id1");
+    Assert.assertEquals(id1, "5d31ab1f59579aad895dc7a32d310@apache.org");
+
+    String id2 = msgCtxt.getVariable("xop_attachment_2_content_id");
+    Assert.assertNotNull(id2, "no extracted id2");
+    Assert.assertEquals(id2, "5d314343570@apache.org");
+
+    String count = msgCtxt.getVariable("xop_attachment_count");
+    int c = Integer.valueOf(count);
+    Assert.assertEquals(c, 2);
+
+    }
+
+  }
+
+  @Test
   public void urlEncodedContentId() throws Exception {
     Arrays.asList("acord-with-url-encoded-content-id.bin", "encoded-content-ex2.bin").stream()
         .forEach(

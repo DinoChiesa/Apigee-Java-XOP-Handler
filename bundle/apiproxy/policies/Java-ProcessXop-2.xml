@@ -4,5 +4,5 @@
     <Property name="action">extract_soap</Property>
   </Properties>
   <ClassName>com.google.apigee.edgecallouts.XopHandler</ClassName>
-  <ResourceURL>java://apigee-custom-xop-handler-20221207.jar</ResourceURL>
+  <ResourceURL>java://apigee-custom-xop-handler-20230512.jar</ResourceURL>
 </JavaCallout>

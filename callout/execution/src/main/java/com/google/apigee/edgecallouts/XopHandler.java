@@ -271,6 +271,45 @@ public class XopHandler extends CalloutBase implements Execution {
     return XmlUtils.toString(document, true);
   }
 
+  private void extractAttachments(
+      Document document, MultipartInput mpi, List<String> acceptableAttachmentContentTypes, MessageContext msgCtxt)
+      throws Exception {
+
+    // Traverse the attachment streams in order.
+    int p = 1;
+    for (PartInput attachmentPart; (attachmentPart = mpi.nextPart()) != null; ) {
+      p++;
+      // get the InputStream for the the attachment here
+      String ctype = attachmentPart.getContentType();
+      if (ctype == null) {
+        throw new IllegalStateException(String.format("no content-type found for part #%d", p));
+      }
+
+      if (!acceptableCtype(acceptableAttachmentContentTypes, ctype)) {
+        throw new IllegalStateException(
+            String.format("unexpected content-type for part #%d (%s)", p, ctype));
+      }
+
+      final String partContentIdHeader = attachmentPart.getHeaderField("Content-ID");
+      if (partContentIdHeader == null) {
+        throw new IllegalStateException(String.format("missing Content-ID for part #%d", p));
+      }
+      // extract the string enclosed in angle brackets
+      Matcher m = contentIdPattern.matcher(partContentIdHeader.trim());
+      if (!m.matches()) {
+        throw new IllegalStateException(String.format("malformed Content-ID for part #%d", p));
+      }
+      // find the unique matching xop:Include element for this part
+      String contentId = m.group(1);
+      String nameForVar = String.format("attachment_%d_content", p-1);
+      msgCtxt.setVariable(varName(nameForVar + "_id"), contentId);
+      // set byte array into variable
+      msgCtxt.setVariable(
+            varName(nameForVar), IOUtil.readAllBytes(attachmentPart.getInputStream()));
+    }
+    msgCtxt.setVariable(varName("attachment_count"), String.valueOf(p-1));
+  }
+
   private static String removeUsernameToken(InputStream in1) throws Exception {
     Document document = XmlUtils.parseXml(in1);
 
@@ -392,8 +431,9 @@ public class XopHandler extends CalloutBase implements Execution {
               String.format("unexpected content-type for part #1 (%s)", ctype1));
         }
         InputStream in1 = partInput1.getInputStream();
-        msgCtxt.setVariable(
-            varName("extracted_xml"), new String(IOUtil.readAllBytes(in1), StandardCharsets.UTF_8));
+        String xmlContent = new String(IOUtil.readAllBytes(in1), StandardCharsets.UTF_8);
+        msgCtxt.setVariable(varName("extracted_xml"), xmlContent);
+        extractAttachments(XmlUtils.parseXml(xmlContent), mpi, getAcceptableAttachmentContentTypes(msgCtxt), msgCtxt);
         return ExecutionResult.SUCCESS;
       }
 

@@ -7,8 +7,9 @@ a Java callout for Apigee that reads a multipart/related payload as described in
 
 The callout can do one of three things with that payload:
 
-1. parse the SOAP/XML portion and extract it to a variable. This
-   approach ignores the data within the attachment.
+1. parse the message and extract each of the distinct pieces to distinct context
+   variable. The SOAP/XML portion will be stored as a string in one variable,
+   and the attachments will be stored in other context variables.
 
 2. parse the SOAP portion to remove the UsernameToken in the SOAP Header, and
    then replaces the modified SOAP payload in the message. The XOP attachment
@@ -197,7 +198,7 @@ Depending on the value of that Property, the callout performs different actions:
 | value    | description of behavior |
 | -------- | ----------- |
 | `edit_1` | In the SOAP part of the message, remove the UsernameToken in the SOAP Header, and then replace the modified SOAP payload in the message. The XOP attachment remains unchanged. |
-| `extract_soap` | Extract the SOAP portion of the multipart message into a variable. |
+| `extract_soap` | Extract the SOAP portion of the multipart message into a variable, and the attachment or attachments into other variables. |
 | `transform_to_embedded` | Transform the message to embed the binary attachment directly into the XML, as a base64-encoded text node. |
 
 As you can see, the behavior for the `edit_1` action is quite particular. In the
@@ -219,7 +220,15 @@ The callout assumes that the message has exactly two parts: one XML document, an
    * by default, the first part must have one of these content-types: `application/soap+xml`, `application/xop+xml`, `text/xml`. You can affect this with the `part1-ctypes` property.
    * by default, the second part must have one of these content-types: `image/jpeg`, `image/png`, `application/zip`, `application/pdf` or `application/octet-stream`. You can affect this with the `part2-ctypes` property.
 
-3. For the `edit_1` action, the first part must be a valid SOAP 1.1 message, using namespace `http://schemas.xmlsoap.org/soap/envelope/`.
+3. For the `edit_1` action, the first part must be a valid SOAP 1.1 message,
+   using namespace `http://schemas.xmlsoap.org/soap/envelope/`.
+
+3. For the `extract_soap` action, the XML is stored in `xop_extracted_xml`, and
+   the attachments are stored in `xop_attachment_N_content`, where N is replaced
+   with a digit, as a byte array. This bytestream will not be visible in Apigee
+   trace.  The content-ID for these various pieces will be stored into
+   `xop_attachment_N_content_id`. The number of attachments will be stored into
+   `xop_attachment_count`.
 
 4. You could use this callout as-is, _or_, use it as a starting point, if you
    wanted to do something different with a XOP message. If you like, you could
